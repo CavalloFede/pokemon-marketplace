@@ -1,23 +1,21 @@
 import { useUser, useTeam, usePokemon, usePokedexStats, useUpdateTeam } from '../hooks/useApi';
 import { useAuthStore } from '../store/authStore';
 
-interface Pokemon {
+interface TeamPokemon {
   id: string;
   nickname: string | null;
   isShiny: boolean;
-  teamPosition: number | null;
+  teamPosition: number;
   species: {
-    id: number;
     name: string;
     spriteUrl: string;
-    rarity: string;
   };
 }
 
 export default function Profile() {
   const { user } = useAuthStore();
   const { data: userData } = useUser();
-  const { data: team, isLoading: teamLoading } = useTeam();
+  const { data: team } = useTeam();
   const { data: pokemonData } = usePokemon({ limit: 100 });
   const { data: pokedexStats } = usePokedexStats();
   const updateTeam = useUpdateTeam();
@@ -27,7 +25,7 @@ export default function Profile() {
   const totalObtained = pokedexStats?.totalObtained ?? 0;
 
   const handleRemoveFromTeam = async (pokemonId: string) => {
-    const currentTeamIds = team?.map((p: Pokemon) => p.id) ?? [];
+    const currentTeamIds = team?.map((p: TeamPokemon) => p.id) ?? [];
     try {
       await updateTeam.mutateAsync(currentTeamIds.filter((id: string) => id !== pokemonId));
     } catch (error) {
@@ -37,7 +35,7 @@ export default function Profile() {
 
   // Sort team by position
   const sortedTeam = [...(team || [])].sort(
-    (a: Pokemon, b: Pokemon) => (a.teamPosition ?? 0) - (b.teamPosition ?? 0)
+    (a: TeamPokemon, b: TeamPokemon) => (a.teamPosition ?? 0) - (b.teamPosition ?? 0)
   );
 
   return (
@@ -65,9 +63,9 @@ export default function Profile() {
               <span className="text-pokemon-electric">🪙</span>
               <span className="font-bold text-xl">{user?.coins ?? 0}</span>
             </div>
-            {userData?.streak !== undefined && userData.streak > 0 && (
+            {userData?.streakDays !== undefined && userData.streakDays > 0 && (
               <p className="text-sm text-gray-400 mt-1">
-                🔥 {userData.streak} day streak
+                🔥 {userData.streakDays} day streak
               </p>
             )}
           </div>
@@ -82,7 +80,7 @@ export default function Profile() {
         </div>
         <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
           {Array.from({ length: 6 }).map((_, i) => {
-            const pokemon = sortedTeam[i] as Pokemon | undefined;
+            const pokemon = sortedTeam[i] as TeamPokemon | undefined;
 
             return (
               <div
@@ -149,7 +147,7 @@ export default function Profile() {
             <div className="text-gray-400">Pokedex Entries</div>
           </div>
           <div className="card">
-            <div className="text-3xl font-bold">{userData?.tradesCompleted ?? 0}</div>
+            <div className="text-3xl font-bold">{userData?.stats?.tradesCompleted ?? 0}</div>
             <div className="text-gray-400">Trades Done</div>
           </div>
           <div className="card">
@@ -164,19 +162,17 @@ export default function Profile() {
         <h2 className="text-2xl font-bold mb-4">Account</h2>
         <div className="card space-y-4">
           <div className="flex justify-between">
-            <span className="text-gray-400">Member Since</span>
-            <span>
-              {userData?.createdAt
-                ? new Date(userData.createdAt).toLocaleDateString()
-                : 'Unknown'}
-            </span>
+            <span className="text-gray-400">Current Streak</span>
+            <span>{userData?.streakDays ?? 0} days</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-400">Last Daily Claim</span>
+            <span className="text-gray-400">Daily Reward</span>
             <span>
-              {userData?.lastDailyClaim
-                ? new Date(userData.lastDailyClaim).toLocaleDateString()
-                : 'Never'}
+              {userData?.dailyReward?.canClaim
+                ? 'Available!'
+                : userData?.dailyReward?.nextClaimAt
+                  ? `Next: ${new Date(userData.dailyReward.nextClaimAt).toLocaleDateString()}`
+                  : 'Claimed today'}
             </span>
           </div>
         </div>

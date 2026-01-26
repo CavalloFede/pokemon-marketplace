@@ -5,13 +5,9 @@ import { useAuthStore } from '../store/authStore';
 type TradeStatus = 'all' | 'pending' | 'accepted' | 'rejected' | 'expired';
 
 interface TradePokemon {
-  id: string;
-  nickname: string | null;
-  isShiny: boolean;
   species: {
     name: string;
     spriteUrl: string;
-    rarity: string;
   };
 }
 
@@ -24,12 +20,10 @@ interface Trade {
   initiator: {
     id: string;
     displayName: string;
-    avatarUrl: string | null;
   };
   receiver: {
     id: string;
     displayName: string;
-    avatarUrl: string | null;
   };
   initiatorPokemon: TradePokemon[];
   receiverPokemon: TradePokemon[];
@@ -125,17 +119,9 @@ export default function Trades() {
               >
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    {otherUser.avatarUrl ? (
-                      <img
-                        src={otherUser.avatarUrl}
-                        alt={otherUser.displayName}
-                        className="w-10 h-10 rounded-full"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
-                        {otherUser.displayName[0].toUpperCase()}
-                      </div>
-                    )}
+                    <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
+                      {otherUser.displayName[0].toUpperCase()}
+                    </div>
                     <div>
                       <p className="font-bold">{otherUser.displayName}</p>
                       <p className="text-sm text-gray-400">
@@ -153,9 +139,9 @@ export default function Trades() {
                   <div className="flex-1">
                     <p className="text-xs text-gray-400 mb-2">They offer:</p>
                     <div className="flex gap-2">
-                      {theirPokemon.slice(0, 3).map((p) => (
+                      {theirPokemon.slice(0, 3).map((p, idx) => (
                         <div
-                          key={p.id}
+                          key={idx}
                           className="w-12 h-12 bg-gray-700 rounded flex items-center justify-center"
                         >
                           {p.species.spriteUrl ? (
@@ -181,9 +167,9 @@ export default function Trades() {
                   <div className="flex-1">
                     <p className="text-xs text-gray-400 mb-2">For your:</p>
                     <div className="flex gap-2">
-                      {myPokemon.slice(0, 3).map((p) => (
+                      {myPokemon.slice(0, 3).map((p, idx) => (
                         <div
-                          key={p.id}
+                          key={idx}
                           className="w-12 h-12 bg-gray-700 rounded flex items-center justify-center"
                         >
                           {p.species.spriteUrl ? (
@@ -255,18 +241,8 @@ export default function Trades() {
             {/* Trade parties */}
             <div className="flex items-center justify-between mb-6">
               <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-2">
-                  {selectedTrade.initiator.avatarUrl ? (
-                    <img
-                      src={selectedTrade.initiator.avatarUrl}
-                      alt={selectedTrade.initiator.displayName}
-                      className="w-full h-full rounded-full"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gray-600 rounded-full flex items-center justify-center text-xl">
-                      {selectedTrade.initiator.displayName[0].toUpperCase()}
-                    </div>
-                  )}
+                <div className="w-16 h-16 mx-auto mb-2 bg-gray-600 rounded-full flex items-center justify-center text-xl">
+                  {selectedTrade.initiator.displayName[0].toUpperCase()}
                 </div>
                 <p className="font-bold">{selectedTrade.initiator.displayName}</p>
                 <p className="text-xs text-gray-400">
@@ -277,18 +253,8 @@ export default function Trades() {
               <div className="text-3xl">⇄</div>
 
               <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-2">
-                  {selectedTrade.receiver.avatarUrl ? (
-                    <img
-                      src={selectedTrade.receiver.avatarUrl}
-                      alt={selectedTrade.receiver.displayName}
-                      className="w-full h-full rounded-full"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gray-600 rounded-full flex items-center justify-center text-xl">
-                      {selectedTrade.receiver.displayName[0].toUpperCase()}
-                    </div>
-                  )}
+                <div className="w-16 h-16 mx-auto mb-2 bg-gray-600 rounded-full flex items-center justify-center text-xl">
+                  {selectedTrade.receiver.displayName[0].toUpperCase()}
                 </div>
                 <p className="font-bold">{selectedTrade.receiver.displayName}</p>
                 <p className="text-xs text-gray-400">
@@ -304,14 +270,11 @@ export default function Trades() {
                   {selectedTrade.initiator.displayName} offers:
                 </p>
                 <div className="space-y-2">
-                  {selectedTrade.initiatorPokemon.map((p) => (
-                    <div key={p.id} className="flex items-center gap-2 bg-gray-700 rounded p-2">
+                  {selectedTrade.initiatorPokemon.map((p, idx) => (
+                    <div key={idx} className="flex items-center gap-2 bg-gray-700 rounded p-2">
                       {p.species.spriteUrl ? (
                         <img
-                          src={p.isShiny
-                            ? p.species.spriteUrl.replace('/sprites/pokemon/', '/sprites/pokemon/shiny/')
-                            : p.species.spriteUrl
-                          }
+                          src={p.species.spriteUrl}
                           alt={p.species.name}
                           className="w-10 h-10 pixelated"
                         />
@@ -319,8 +282,7 @@ export default function Trades() {
                         <span className="w-10 h-10 flex items-center justify-center">?</span>
                       )}
                       <span className="capitalize text-sm">
-                        {p.isShiny && '✨ '}
-                        {p.nickname || p.species.name}
+                        {p.species.name}
                       </span>
                     </div>
                   ))}
@@ -332,14 +294,11 @@ export default function Trades() {
                   {selectedTrade.receiver.displayName} offers:
                 </p>
                 <div className="space-y-2">
-                  {selectedTrade.receiverPokemon.map((p) => (
-                    <div key={p.id} className="flex items-center gap-2 bg-gray-700 rounded p-2">
+                  {selectedTrade.receiverPokemon.map((p, idx) => (
+                    <div key={idx} className="flex items-center gap-2 bg-gray-700 rounded p-2">
                       {p.species.spriteUrl ? (
                         <img
-                          src={p.isShiny
-                            ? p.species.spriteUrl.replace('/sprites/pokemon/', '/sprites/pokemon/shiny/')
-                            : p.species.spriteUrl
-                          }
+                          src={p.species.spriteUrl}
                           alt={p.species.name}
                           className="w-10 h-10 pixelated"
                         />
@@ -347,8 +306,7 @@ export default function Trades() {
                         <span className="w-10 h-10 flex items-center justify-center">?</span>
                       )}
                       <span className="capitalize text-sm">
-                        {p.isShiny && '✨ '}
-                        {p.nickname || p.species.name}
+                        {p.species.name}
                       </span>
                     </div>
                   ))}

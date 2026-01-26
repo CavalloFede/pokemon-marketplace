@@ -30,27 +30,39 @@ const RARITY_TEXT_COLORS: Record<string, string> = {
   mythical: 'text-pink-400',
 };
 
-interface Pokemon {
+interface CollectionPokemon {
   id: string;
+  speciesId: number;
   nickname: string | null;
   isShiny: boolean;
   isInTeam: boolean;
   teamPosition: number | null;
   isFavorite: boolean;
-  obtainedAt: string;
   species: {
     id: number;
     name: string;
     spriteUrl: string;
-    rarity: string;
+    spriteShinyUrl: string;
     types: string[];
+    rarity: string;
+  };
+}
+
+interface TeamPokemon {
+  id: string;
+  nickname: string | null;
+  isShiny: boolean;
+  teamPosition: number;
+  species: {
+    name: string;
+    spriteUrl: string;
   };
 }
 
 export default function Collection() {
   const [search, setSearch] = useState('');
   const [rarity, setRarity] = useState('');
-  const [selectedPokemon, setSelectedPokemon] = useState<Pokemon | null>(null);
+  const [selectedPokemon, setSelectedPokemon] = useState<CollectionPokemon | null>(null);
 
   const { data: pokemonData, isLoading } = usePokemon({
     rarity: rarity || undefined,
@@ -64,7 +76,7 @@ export default function Collection() {
   const total = pokemonData?.total ?? 0;
 
   const handleAddToTeam = async (pokemonId: string) => {
-    const currentTeam = teamData?.map((p: Pokemon) => p.id) ?? [];
+    const currentTeam = teamData?.map((p: TeamPokemon) => p.id) ?? [];
     if (currentTeam.length >= 6) {
       alert('Your team is full! Remove a Pokemon first.');
       return;
@@ -82,7 +94,7 @@ export default function Collection() {
   };
 
   const handleRemoveFromTeam = async (pokemonId: string) => {
-    const currentTeam = teamData?.map((p: Pokemon) => p.id) ?? [];
+    const currentTeam = teamData?.map((p: TeamPokemon) => p.id) ?? [];
     try {
       await updateTeam.mutateAsync(currentTeam.filter((id: string) => id !== pokemonId));
       setSelectedPokemon(null);
@@ -131,7 +143,7 @@ export default function Collection() {
       {/* Pokemon Grid */}
       {pokemon.length > 0 ? (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
-          {pokemon.map((p: Pokemon) => (
+          {pokemon.map((p: CollectionPokemon) => (
             <div
               key={p.id}
               onClick={() => setSelectedPokemon(p)}
@@ -233,8 +245,8 @@ export default function Collection() {
                 <span className="capitalize">{selectedPokemon.species.types?.join(', ') || 'Unknown'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Obtained</span>
-                <span>{new Date(selectedPokemon.obtainedAt).toLocaleDateString()}</span>
+                <span className="text-gray-400">In Team</span>
+                <span>{selectedPokemon.isInTeam ? 'Yes' : 'No'}</span>
               </div>
               {selectedPokemon.isShiny && (
                 <div className="flex justify-between">

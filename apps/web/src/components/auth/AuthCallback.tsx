@@ -1,7 +1,7 @@
 import { useAuthCallback } from '../../hooks/useAuth';
 
 export default function AuthCallback() {
-  const { isLoading, error } = useAuthCallback();
+  const { error } = useAuthCallback();
 
   if (error) {
     return (

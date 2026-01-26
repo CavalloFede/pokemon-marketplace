@@ -1,12 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { useAuthStore } from '../store/authStore';
-import type {
-  UserPokemon,
-  ShopItem,
-  Trade,
-  PokedexEntry,
-} from '@pokemon-marketplace/shared';
 
 // Query keys
 export const queryKeys = {
@@ -24,7 +18,7 @@ export const queryKeys = {
 export function useUser() {
   return useQuery({
     queryKey: queryKeys.user,
-    queryFn: () => api.users.getMe(),
+    queryFn: () => api.getCurrentUser(),
   });
 }
 
@@ -33,7 +27,7 @@ export function useClaimDailyReward() {
   const setCoins = useAuthStore((state) => state.setCoins);
 
   return useMutation({
-    mutationFn: () => api.users.claimDailyReward(),
+    mutationFn: () => api.claimDailyReward(),
     onSuccess: (data) => {
       setCoins(data.newBalance);
       queryClient.invalidateQueries({ queryKey: queryKeys.user });
@@ -50,14 +44,30 @@ export function usePokemon(params?: {
 }) {
   return useQuery({
     queryKey: [...queryKeys.pokemon, params],
-    queryFn: () => api.pokemon.getAll(params),
+    queryFn: async () => {
+      const result = await api.getMyPokemon({
+        rarity: params?.rarity,
+        search: params?.search,
+        page: params?.page,
+        pageSize: params?.limit,
+      });
+      return {
+        pokemon: result.data,
+        total: result.total,
+        page: result.page,
+        totalPages: result.totalPages,
+      };
+    },
   });
 }
 
 export function useTeam() {
   return useQuery({
     queryKey: queryKeys.team,
-    queryFn: () => api.pokemon.getTeam(),
+    queryFn: async () => {
+      const result = await api.getMyTeam();
+      return result.team;
+    },
   });
 }
 
@@ -65,7 +75,7 @@ export function useUpdateTeam() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (pokemonIds: string[]) => api.pokemon.updateTeam(pokemonIds),
+    mutationFn: (pokemonIds: string[]) => api.updateTeam(pokemonIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.team });
       queryClient.invalidateQueries({ queryKey: queryKeys.pokemon });
@@ -77,14 +87,35 @@ export function useUpdateTeam() {
 export function usePokedex(params?: { generation?: number }) {
   return useQuery({
     queryKey: [...queryKeys.pokedex, params],
-    queryFn: () => api.pokedex.getAll(params),
+    queryFn: async () => {
+      const result = await api.getPokedex({ generation: params?.generation });
+      return {
+        entries: result.data.filter((e) => e.obtained).map((e) => ({
+          speciesId: e.species.id,
+          species: e.species,
+          firstObtainedAt: new Date().toISOString(), // API doesn't return this yet
+          timesObtained: e.timesObtained,
+          hasShiny: false, // API doesn't return this yet
+        })),
+        total: result.total,
+      };
+    },
   });
 }
 
 export function usePokedexStats() {
   return useQuery({
     queryKey: queryKeys.pokedexStats,
-    queryFn: () => api.pokedex.getStats(),
+    queryFn: async () => {
+      const result = await api.getPokedexStats();
+      return {
+        totalObtained: result.obtained,
+        totalSpecies: result.totalSpecies,
+        completionPercent: result.percentage,
+        byRarity: result.byRarity,
+        byGeneration: result.byGeneration,
+      };
+    },
   });
 }
 
@@ -92,7 +123,7 @@ export function usePokedexStats() {
 export function useShopItems() {
   return useQuery({
     queryKey: queryKeys.shopItems,
-    queryFn: () => api.shop.getItems(),
+    queryFn: () => api.getShopItems(),
   });
 }
 
@@ -101,13 +132,8 @@ export function usePurchase() {
   const setCoins = useAuthStore((state) => state.setCoins);
 
   return useMutation({
-    mutationFn: ({
-      itemId,
-      quantity = 1,
-    }: {
-      itemId: string;
-      quantity?: number;
-    }) => api.shop.purchase(itemId, quantity),
+    mutationFn: ({ itemId }: { itemId: string; quantity?: number }) =>
+      api.purchaseItem(itemId),
     onSuccess: (data) => {
       setCoins(data.newBalance);
       queryClient.invalidateQueries({ queryKey: queryKeys.pokemon });
@@ -122,7 +148,10 @@ export function usePurchase() {
 export function useTrades(params?: { status?: string }) {
   return useQuery({
     queryKey: [...queryKeys.trades, params],
-    queryFn: () => api.trades.getAll(params),
+    queryFn: async () => {
+      const result = await api.getTrades(params);
+      return result.data;
+    },
   });
 }
 
@@ -135,7 +164,13 @@ export function useCreateTrade() {
       offeredPokemonIds: string[];
       requestedPokemonIds: string[];
       coinsOffered?: number;
-    }) => api.trades.create(data),
+    }) =>
+      api.createTrade({
+        receiverId: data.receiverId,
+        initiatorPokemonIds: data.offeredPokemonIds,
+        receiverPokemonIds: data.requestedPokemonIds,
+        coinsOffered: data.coinsOffered,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.trades });
     },
@@ -144,17 +179,14 @@ export function useCreateTrade() {
 
 export function useAcceptTrade() {
   const queryClient = useQueryClient();
-  const setCoins = useAuthStore((state) => state.setCoins);
 
   return useMutation({
-    mutationFn: (tradeId: string) => api.trades.accept(tradeId),
-    onSuccess: (data) => {
-      if (data.newBalance !== undefined) {
-        setCoins(data.newBalance);
-      }
+    mutationFn: (tradeId: string) => api.acceptTrade(tradeId),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.trades });
       queryClient.invalidateQueries({ queryKey: queryKeys.pokemon });
       queryClient.invalidateQueries({ queryKey: queryKeys.pokedex });
+      queryClient.invalidateQueries({ queryKey: queryKeys.user });
     },
   });
 }
@@ -163,7 +195,7 @@ export function useRejectTrade() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (tradeId: string) => api.trades.reject(tradeId),
+    mutationFn: (tradeId: string) => api.rejectTrade(tradeId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.trades });
     },

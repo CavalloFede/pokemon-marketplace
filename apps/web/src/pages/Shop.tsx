@@ -41,7 +41,7 @@ export default function Shop() {
   const eggItems = shopItems?.filter((item: any) => item.itemType === 'egg') ?? [];
   const pokemonItems = shopItems?.filter((item: any) => item.itemType === 'pokemon') ?? [];
 
-  const handlePurchase = async (itemId: string, itemName: string) => {
+  const handlePurchase = async (itemId: string) => {
     if (purchase.isPending) return;
 
     try {
@@ -49,12 +49,19 @@ export default function Shop() {
       const result = await purchase.mutateAsync({ itemId, quantity: 1 });
 
       // Show hatch animation for eggs
-      if (result.hatchedPokemon) {
-        setHatchResult({ pokemon: result.hatchedPokemon });
+      if (result.pokemon) {
+        setHatchResult({
+          pokemon: {
+            id: result.pokemon.id,
+            nickname: null,
+            isShiny: result.pokemon.isShiny,
+            species: result.pokemon.species,
+          },
+        });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Purchase failed:', error);
-      alert(error.message || 'Purchase failed');
+      alert(error instanceof Error ? error.message : 'Purchase failed');
     } finally {
       setIsHatching(false);
     }
@@ -113,7 +120,7 @@ export default function Shop() {
                   {EGG_DESCRIPTIONS[eggType] || 'Random Pokemon'}
                 </p>
                 <button
-                  onClick={() => handlePurchase(egg.id, egg.name)}
+                  onClick={() => handlePurchase(egg.id)}
                   disabled={!canAfford || purchase.isPending}
                   className={`w-full btn ${canAfford ? 'btn-primary' : 'btn-secondary cursor-not-allowed'}`}
                 >
@@ -163,7 +170,7 @@ export default function Shop() {
                     {species?.rarity || 'Unknown'}
                   </p>
                   <button
-                    onClick={() => handlePurchase(item.id, species?.name)}
+                    onClick={() => handlePurchase(item.id)}
                     disabled={!canAfford || purchase.isPending || item.stock === 0}
                     className={`w-full btn mt-2 ${canAfford && item.stock > 0 ? 'btn-primary' : 'btn-secondary cursor-not-allowed'}`}
                   >

@@ -10,9 +10,9 @@ export default function Home() {
   const { data: shopItems } = useShopItems();
   const claimReward = useClaimDailyReward();
 
-  const canClaimDaily = userData?.canClaimDaily ?? false;
-  const streak = userData?.streak ?? 0;
-  const rewardAmount = getRewardAmount(streak);
+  const canClaimDaily = userData?.dailyReward?.canClaim ?? false;
+  const streak = userData?.dailyReward?.currentStreak ?? userData?.streakDays ?? 0;
+  const rewardAmount = userData?.dailyReward?.potentialReward ?? getRewardAmount(streak);
 
   const totalPokemon = pokemonData?.total ?? 0;
   const shiniesCount = pokemonData?.pokemon?.filter((p: any) => p.isShiny).length ?? 0;
@@ -97,7 +97,7 @@ export default function Home() {
         </div>
         <div className="card text-center">
           <div className="text-3xl mb-2">🔄</div>
-          <div className="text-2xl font-bold">{userData?.tradesCompleted ?? 0}</div>
+          <div className="text-2xl font-bold">{userData?.stats?.tradesCompleted ?? 0}</div>
           <div className="text-gray-400">Trades Completed</div>
         </div>
         <div className="card text-center">
