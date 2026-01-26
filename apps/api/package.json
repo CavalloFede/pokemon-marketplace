@@ -11,6 +11,7 @@
     "type-check": "tsc --noEmit",
     "test": "vitest",
     "test:unit": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:migrate:prod": "prisma migrate deploy",
@@ -36,7 +37,12 @@
     "zod": "^3.22.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.0.0",
     "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^9.0.0",
+    "globals": "^15.0.0",
     "prisma": "^5.0.0",
     "tsx": "^4.0.0",
     "typescript": "^5.4.0",
