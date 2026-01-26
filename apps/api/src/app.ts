@@ -4,6 +4,9 @@ import helmet from '@fastify/helmet';
 import sensible from '@fastify/sensible';
 import rateLimit from '@fastify/rate-limit';
 
+// Middleware
+import { authMiddleware } from './middleware/auth.js';
+
 // Routes
 import { healthRoutes } from './routes/health.js';
 import { authRoutes } from './routes/auth.js';
@@ -37,14 +40,21 @@ export async function buildApp(): Promise<FastifyInstance> {
     timeWindow: '1 minute'
   });
 
-  // Register routes
+  // Public routes (no auth required)
   await app.register(healthRoutes, { prefix: '/health' });
   await app.register(authRoutes, { prefix: '/auth' });
-  await app.register(userRoutes, { prefix: '/users' });
-  await app.register(pokemonRoutes, { prefix: '/pokemon' });
-  await app.register(shopRoutes, { prefix: '/shop' });
-  await app.register(tradeRoutes, { prefix: '/trades' });
-  await app.register(pokedexRoutes, { prefix: '/pokedex' });
+
+  // Protected routes (auth required)
+  await app.register(async (protectedApp) => {
+    // Add auth middleware to all routes in this scope
+    protectedApp.addHook('preHandler', authMiddleware);
+
+    await protectedApp.register(userRoutes, { prefix: '/users' });
+    await protectedApp.register(pokemonRoutes, { prefix: '/pokemon' });
+    await protectedApp.register(shopRoutes, { prefix: '/shop' });
+    await protectedApp.register(tradeRoutes, { prefix: '/trades' });
+    await protectedApp.register(pokedexRoutes, { prefix: '/pokedex' });
+  });
 
   return app;
 }
