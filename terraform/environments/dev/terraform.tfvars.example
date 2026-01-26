@@ -1,0 +1,48 @@
+# AWS Configuration
+aws_region = "us-east-1"
+
+# Project
+project_name = "pokemon-marketplace"
+environment  = "dev"
+
+# Networking
+vpc_cidr           = "10.0.0.0/16"
+availability_zones = ["us-east-1a", "us-east-1b"]
+enable_nat_gateway = false # Set to true for Lambda VPC internet access (costs ~$32/month)
+
+# Database
+db_name        = "pokemon_marketplace"
+db_min_capacity = 0.5
+db_max_capacity = 2
+
+# Cache
+redis_use_serverless  = true
+redis_max_storage_gb  = 1
+
+# Auth - Get these from Google Cloud Console
+# https://console.cloud.google.com/apis/credentials
+google_client_id     = "your-google-client-id.apps.googleusercontent.com"
+google_client_secret = "your-google-client-secret"
+
+auth_callback_urls = [
+  "http://localhost:5173/auth/callback",
+  "https://your-cloudfront-domain.cloudfront.net/auth/callback"
+]
+
+auth_logout_urls = [
+  "http://localhost:5173/login",
+  "https://your-cloudfront-domain.cloudfront.net/login"
+]
+
+# API
+lambda_zip_path = "../../../apps/api/dist/lambda.zip"
+lambda_memory   = 512
+
+cors_origins = [
+  "http://localhost:5173",
+  "http://localhost:3000"
+]
+
+# Frontend (optional custom domain)
+frontend_domain_names = []
+acm_certificate_arn   = null
