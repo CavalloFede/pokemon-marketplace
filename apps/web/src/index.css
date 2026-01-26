@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-900 text-white;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors;
+  }
+
+  .btn-primary {
+    @apply bg-pokemon-electric text-gray-900 hover:bg-yellow-400;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-700 text-white hover:bg-gray-600;
+  }
+
+  .card {
+    @apply bg-gray-800 rounded-xl p-4 shadow-lg;
+  }
+
+  .input {
+    @apply bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-pokemon-electric;
+  }
+}
+
+/* Rarity glow effects */
+.rarity-common { @apply ring-2 ring-rarity-common; }
+.rarity-uncommon { @apply ring-2 ring-rarity-uncommon; }
+.rarity-rare { @apply ring-2 ring-rarity-rare; }
+.rarity-epic { @apply ring-2 ring-rarity-epic; }
+.rarity-legendary { @apply ring-2 ring-rarity-legendary shadow-lg shadow-rarity-legendary/30; }
+.rarity-mythical { @apply ring-2 ring-rarity-mythical shadow-lg shadow-rarity-mythical/30; }
+
+/* Shiny sparkle effect */
+.shiny {
+  position: relative;
+}
+
+.shiny::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent 40%, rgba(255, 255, 255, 0.3) 50%, transparent 60%);
+  animation: shine 2s infinite;
+}
+
+@keyframes shine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}

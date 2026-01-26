@@ -1,0 +1,198 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Enums
+// ============================================
+
+enum PokemonRarity {
+  common
+  uncommon
+  rare
+  epic
+  legendary
+  mythical
+}
+
+enum ShopItemType {
+  pokemon
+  egg
+}
+
+enum EggCategory {
+  common
+  rare
+  legendary
+  mystery
+}
+
+enum ObtainedMethod {
+  shop_purchase
+  egg_hatch
+  trade
+  daily_reward
+  event
+  initial
+}
+
+enum TradeStatus {
+  pending
+  accepted
+  rejected
+  cancelled
+  expired
+}
+
+enum CoinTransactionType {
+  daily_reward
+  purchase
+  trade_sent
+  trade_received
+  initial_bonus
+  event
+}
+
+// ============================================
+// Models
+// ============================================
+
+model User {
+  id             String    @id @default(uuid())
+  cognitoId      String    @unique @map("cognito_id")
+  email          String    @unique
+  displayName    String    @map("display_name")
+  avatarUrl      String?   @map("avatar_url")
+  coins          Int       @default(500)
+  streakDays     Int       @default(0) @map("streak_days")
+  lastDailyClaim DateTime? @map("last_daily_claim")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  pokemon           UserPokemon[]
+  pokedex           UserPokedex[]
+  coinTransactions  CoinTransaction[]
+  initiatedTrades   Trade[]           @relation("TradeInitiator")
+  receivedTrades    Trade[]           @relation("TradeReceiver")
+
+  @@map("users")
+}
+
+model PokemonSpecies {
+  id            Int           @id // PokeAPI ID (1-1025)
+  name          String
+  spriteUrl     String        @map("sprite_url")
+  spriteShinyUrl String       @map("sprite_shiny_url")
+  types         String[]      // ["fire", "flying"]
+  rarity        PokemonRarity
+  basePrice     Int           @map("base_price")
+  captureRate   Int           @map("capture_rate")
+  isLegendary   Boolean       @default(false) @map("is_legendary")
+  isMythical    Boolean       @default(false) @map("is_mythical")
+  generation    Int
+  eggGroups     String[]      @map("egg_groups")
+
+  // Relations
+  userPokemon   UserPokemon[]
+  pokedexEntries UserPokedex[]
+  shopItems     ShopItem[]
+
+  @@map("pokemon_species")
+}
+
+model UserPokemon {
+  id             String         @id @default(uuid())
+  userId         String         @map("user_id")
+  speciesId      Int            @map("species_id")
+  nickname       String?
+  isShiny        Boolean        @default(false) @map("is_shiny")
+  isInTeam       Boolean        @default(false) @map("is_in_team")
+  teamPosition   Int?           @map("team_position") // 1-6
+  isFavorite     Boolean        @default(false) @map("is_favorite")
+  obtainedMethod ObtainedMethod @map("obtained_method")
+  obtainedAt     DateTime       @default(now()) @map("obtained_at")
+
+  // Relations
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  species PokemonSpecies @relation(fields: [speciesId], references: [id])
+
+  @@unique([userId, teamPosition])
+  @@index([userId])
+  @@index([userId, isInTeam])
+  @@map("user_pokemon")
+}
+
+model UserPokedex {
+  userId          String   @map("user_id")
+  speciesId       Int      @map("species_id")
+  firstObtainedAt DateTime @default(now()) @map("first_obtained_at")
+  timesObtained   Int      @default(1) @map("times_obtained")
+
+  // Relations
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  species PokemonSpecies @relation(fields: [speciesId], references: [id])
+
+  @@id([userId, speciesId])
+  @@index([userId])
+  @@map("user_pokedex")
+}
+
+model ShopItem {
+  id          String       @id @default(uuid())
+  itemType    ShopItemType @map("item_type")
+  speciesId   Int?         @map("species_id") // For specific pokemon
+  eggCategory EggCategory? @map("egg_category") // For eggs
+  price       Int
+  stock       Int?         // null = unlimited
+  isActive    Boolean      @default(true) @map("is_active")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  species PokemonSpecies? @relation(fields: [speciesId], references: [id])
+
+  @@map("shop_items")
+}
+
+model Trade {
+  id                  String      @id @default(uuid())
+  initiatorId         String      @map("initiator_id")
+  receiverId          String      @map("receiver_id")
+  status              TradeStatus @default(pending)
+  initiatorPokemonIds String[]    @map("initiator_pokemon_ids") // UUIDs
+  receiverPokemonIds  String[]    @map("receiver_pokemon_ids")  // UUIDs
+  coinsOffered        Int         @default(0) @map("coins_offered")
+  message             String?
+  createdAt           DateTime    @default(now()) @map("created_at")
+  expiresAt           DateTime    @map("expires_at")
+  completedAt         DateTime?   @map("completed_at")
+
+  // Relations
+  initiator User @relation("TradeInitiator", fields: [initiatorId], references: [id])
+  receiver  User @relation("TradeReceiver", fields: [receiverId], references: [id])
+
+  @@index([receiverId, status])
+  @@index([initiatorId, status])
+  @@map("trades")
+}
+
+model CoinTransaction {
+  id          String              @id @default(uuid())
+  userId      String              @map("user_id")
+  amount      Int                 // Positive = credit, negative = debit
+  type        CoinTransactionType
+  referenceId String?             @map("reference_id") // Trade ID, Shop Item ID, etc.
+  createdAt   DateTime            @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("coin_transactions")
+}
