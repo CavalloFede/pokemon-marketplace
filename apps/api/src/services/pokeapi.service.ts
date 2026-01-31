@@ -8,6 +8,21 @@ interface PokemonListResponse {
   results: Array<{ name: string; url: string }>;
 }
 
+interface EvolutionChainLink {
+  species: { name: string; url: string };
+  evolution_details: Array<{
+    min_level: number | null;
+    trigger: { name: string };
+    item: { name: string } | null;
+  }>;
+  evolves_to: EvolutionChainLink[];
+}
+
+interface EvolutionChainResponse {
+  id: number;
+  chain: EvolutionChainLink;
+}
+
 /**
  * Service for interacting with PokeAPI
  * Implements cache-aside pattern with Redis
@@ -103,6 +118,89 @@ export class PokeApiService {
     ]);
 
     return { pokemon, species };
+  }
+
+  /**
+   * Get evolution chain by ID
+   */
+  async getEvolutionChain(chainId: number): Promise<EvolutionChainResponse> {
+    const cacheKey = `pokeapi:evolution-chain:${chainId}`;
+
+    return this.fetchWithCache(cacheKey, async () => {
+      const response = await fetch(`${POKEAPI_BASE_URL}/evolution-chain/${chainId}`);
+      if (!response.ok) {
+        throw new Error(`PokeAPI error: ${response.status}`);
+      }
+
+      return response.json();
+    });
+  }
+
+  /**
+   * Parse evolution data from species to get evolution requirements
+   * Returns: { evolvesFromId, evolutionLevel } or null if base form
+   */
+  async getEvolutionData(speciesId: number): Promise<{
+    evolvesFromId: number | null;
+    evolutionLevel: number | null;
+  }> {
+    const species = await this.getSpeciesById(speciesId);
+
+    // If no evolves_from_species, this is a base form
+    if (!species.evolves_from_species) {
+      return { evolvesFromId: null, evolutionLevel: null };
+    }
+
+    const evolvesFromId = this.extractIdFromUrl(species.evolves_from_species.url);
+
+    // Get evolution chain to find the level requirement
+    const chainId = this.extractIdFromUrl(species.evolution_chain.url);
+    const evolutionChain = await this.getEvolutionChain(chainId);
+
+    // Find this species in the chain to get evolution details
+    const evolutionLevel = this.findEvolutionLevel(evolutionChain.chain, speciesId);
+
+    return { evolvesFromId, evolutionLevel };
+  }
+
+  /**
+   * Extract ID from PokeAPI URL
+   */
+  private extractIdFromUrl(url: string): number {
+    const matches = url.match(/\/(\d+)\/?$/);
+    return matches ? parseInt(matches[1], 10) : 0;
+  }
+
+  /**
+   * Recursively search evolution chain for a species and return its min_level
+   */
+  private findEvolutionLevel(chain: EvolutionChainLink, targetSpeciesId: number): number | null {
+    // Check if current chain link is the target
+    const currentId = this.extractIdFromUrl(chain.species.url);
+    if (currentId === targetSpeciesId) {
+      // Get min_level from evolution_details
+      if (chain.evolution_details && chain.evolution_details.length > 0) {
+        return chain.evolution_details[0].min_level || null;
+      }
+      return null;
+    }
+
+    // Search in evolves_to
+    for (const nextEvolution of chain.evolves_to) {
+      const result = this.findEvolutionLevel(nextEvolution, targetSpeciesId);
+      if (result !== null) {
+        return result;
+      }
+      // If we found the species but no level, check this branch
+      const nextId = this.extractIdFromUrl(nextEvolution.species.url);
+      if (nextId === targetSpeciesId) {
+        if (nextEvolution.evolution_details && nextEvolution.evolution_details.length > 0) {
+          return nextEvolution.evolution_details[0].min_level || null;
+        }
+      }
+    }
+
+    return null;
   }
 
   /**

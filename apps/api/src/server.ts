@@ -1,3 +1,6 @@
+// Load environment variables FIRST - must be before any other imports
+import './env.js';
+
 import { buildApp } from './app.js';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);

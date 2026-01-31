@@ -4,7 +4,7 @@ import type {
   ObtainedMethod,
   TradeStatus,
   ShopItemType
-} from './enums';
+} from './enums.js';
 
 // ============================================
 // User Types
@@ -12,7 +12,7 @@ import type {
 
 export interface User {
   id: string;
-  cognitoId: string;
+  firebaseUid: string;
   email: string;
   displayName: string;
   avatarUrl: string | null;
@@ -49,6 +49,10 @@ export interface PokemonSpecies {
   isMythical: boolean;
   generation: number;
   eggGroups: string[];
+  // Evolution data
+  evolvesFromId: number | null;
+  evolutionLevel: number | null;
+  evolvesTo?: PokemonSpecies[];
 }
 
 export interface UserPokemon {
@@ -63,6 +67,22 @@ export interface UserPokemon {
   isFavorite: boolean;
   obtainedMethod: ObtainedMethod;
   obtainedAt: Date;
+  // Leveling system
+  level: number;
+  experience: number;
+  lastExperienceGainAt: Date;
+  // Evolution settings
+  suppressEvolutionNotification: boolean;
+  // Computed level info (optional, added by API)
+  levelInfo?: LevelInfo;
+}
+
+export interface LevelInfo {
+  level: number;
+  experience: number;
+  expToNextLevel: number;
+  expProgress: number;
+  isMaxLevel: boolean;
 }
 
 export interface PokedexEntry {
@@ -71,6 +91,10 @@ export interface PokedexEntry {
   obtained: boolean;
   firstObtainedAt: Date | null;
   timesObtained: number;
+  // Seen vs Owned tracking
+  seen: boolean;        // true if ever obtained
+  owned: boolean;       // true if currently has at least one
+  hasCurrently: boolean; // alias for owned
 }
 
 // ============================================
@@ -97,6 +121,64 @@ export interface PurchaseResult {
 export interface EggHatchResult extends PurchaseResult {
   eggCategory: EggCategory;
   rolledRarity: PokemonRarity;
+}
+
+export interface SellResult {
+  success: boolean;
+  coinsReceived: number;
+  newBalance: number;
+  soldPokemon: {
+    speciesId: number;
+    speciesName: string;
+  };
+}
+
+export interface SellPreview {
+  pokemonId: string;
+  speciesName: string;
+  isShiny: boolean;
+  sellPrice: number;
+  rarity: PokemonRarity;
+  canSell: boolean;
+  reason?: string;
+}
+
+// ============================================
+// Evolution Types
+// ============================================
+
+export interface EvolutionResult {
+  success: boolean;
+  pokemon: {
+    id: string;
+    previousSpeciesId: number;
+    previousSpeciesName: string;
+    newSpeciesId: number;
+    newSpeciesName: string;
+    isShiny: boolean;
+    level: number;
+  };
+  isNewPokedexEntry: boolean;
+}
+
+export interface EvolutionReadyPokemon {
+  id: string;
+  nickname: string | null;
+  isShiny: boolean;
+  level: number;
+  currentSpecies: {
+    id: number;
+    name: string;
+    spriteUrl: string;
+    spriteShinyUrl: string;
+  };
+  targetSpecies: {
+    id: number;
+    name: string;
+    spriteUrl: string;
+    spriteShinyUrl: string;
+    evolutionLevel: number;
+  };
 }
 
 // ============================================
@@ -150,8 +232,12 @@ export interface DailyRewardResult {
 
 export interface PokedexStats {
   totalSpecies: number;
-  obtained: number;
-  percentage: number;
+  obtained: number;       // Legacy: same as seen
+  seen: number;           // Ever obtained
+  owned: number;          // Currently has
+  percentage: number;     // Legacy: same as seenPercentage
+  seenPercentage: number;
+  ownedPercentage: number;
   byGeneration: Record<number, { total: number; obtained: number }>;
   byType: Record<string, { total: number; obtained: number }>;
   byRarity: Record<PokemonRarity, { total: number; obtained: number }>;
@@ -197,4 +283,11 @@ export interface PokeAPISpecies {
     name: string;
     url: string;
   }>;
+  evolution_chain: {
+    url: string;
+  };
+  evolves_from_species: {
+    name: string;
+    url: string;
+  } | null;
 }

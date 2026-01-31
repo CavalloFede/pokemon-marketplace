@@ -98,21 +98,4 @@ export default async function metricsRoutes(fastify: FastifyInstance) {
     return lines.join('\n');
   });
 
-  /**
-   * Health check with detailed status
-   * GET /health
-   */
-  fastify.get('/health', async () => {
-    return {
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      memory: process.memoryUsage(),
-      metrics: {
-        requests: requestCount,
-        errors: errorCount,
-        avgLatencyMs: requestCount > 0 ? totalLatency / requestCount : 0,
-      },
-    };
-  });
 }

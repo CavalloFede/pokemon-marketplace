@@ -121,6 +121,78 @@ async function seedPokemonSpecies() {
   });
 }
 
+async function seedEvolutionData() {
+  console.log('\nSeeding evolution data...\n');
+
+  // Check if evolution data already exists
+  const withEvolutionData = await prisma.pokemonSpecies.count({
+    where: { evolvesFromId: { not: null } }
+  });
+
+  if (withEvolutionData > 0) {
+    console.log(`Already have ${withEvolutionData} species with evolution data. Skipping.`);
+    return;
+  }
+
+  const TOTAL_POKEMON = 1025;
+  const BATCH_SIZE = 20;
+  let updated = 0;
+  const errors: Array<{ id: number; error: string }> = [];
+
+  console.log('Fetching evolution data from PokeAPI...\n');
+
+  for (let i = 1; i <= TOTAL_POKEMON; i += BATCH_SIZE) {
+    const batchIds = Array.from(
+      { length: Math.min(BATCH_SIZE, TOTAL_POKEMON - i + 1) },
+      (_, idx) => i + idx
+    );
+
+    console.log(`Processing evolution batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(TOTAL_POKEMON / BATCH_SIZE)} (IDs ${batchIds[0]}-${batchIds[batchIds.length - 1]})...`);
+
+    for (const id of batchIds) {
+      try {
+        const evolutionData = await pokeApiService.getEvolutionData(id);
+
+        if (evolutionData.evolvesFromId !== null) {
+          // Verify the evolvesFrom species exists
+          const evolvesFromExists = await prisma.pokemonSpecies.findUnique({
+            where: { id: evolutionData.evolvesFromId }
+          });
+
+          if (evolvesFromExists) {
+            await prisma.pokemonSpecies.update({
+              where: { id },
+              data: {
+                evolvesFromId: evolutionData.evolvesFromId,
+                evolutionLevel: evolutionData.evolutionLevel
+              }
+            });
+            updated++;
+          }
+        }
+      } catch (error) {
+        errors.push({
+          id,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    }
+
+    // Delay between batches to avoid rate limiting
+    await new Promise(resolve => setTimeout(resolve, 300));
+  }
+
+  console.log(`\nEvolution data seed complete! Updated ${updated} species.`);
+
+  if (errors.length > 0) {
+    console.log(`\nErrors (${errors.length}):`);
+    errors.slice(0, 10).forEach(e => console.log(`  - Pokemon #${e.id}: ${e.error}`));
+    if (errors.length > 10) {
+      console.log(`  ... and ${errors.length - 10} more errors`);
+    }
+  }
+}
+
 async function seedShopItems() {
   console.log('\nSeeding shop items...\n');
 
@@ -196,6 +268,7 @@ async function seedShopItems() {
 async function main() {
   try {
     await seedPokemonSpecies();
+    await seedEvolutionData();
     await seedShopItems();
   } catch (error) {
     console.error('Seed error:', error);

@@ -2,12 +2,13 @@ import { describe, it, expect } from 'vitest';
 import {
   calculateRarity,
   getPriceForRarity,
+  getSellPrice,
   extractGeneration,
   extractTypes,
   extractEggGroups,
   getSpriteUrls,
 } from './rarity';
-import { PokemonRarity } from '@pokemon-marketplace/shared';
+import { PokemonRarity, RARITY_PRICES, SELL_PRICE_MULTIPLIER } from '@pokemon-marketplace/shared';
 
 describe('Rarity Utils', () => {
   describe('calculateRarity', () => {
@@ -80,6 +81,38 @@ describe('Rarity Utils', () => {
       const commonPrice = getPriceForRarity(PokemonRarity.COMMON);
       const legendaryPrice = getPriceForRarity(PokemonRarity.LEGENDARY);
       expect(legendaryPrice).toBeGreaterThan(commonPrice);
+    });
+  });
+
+  describe('getSellPrice', () => {
+    it('should return 50% of base price for each rarity', () => {
+      Object.values(PokemonRarity).forEach((rarity) => {
+        const sellPrice = getSellPrice(rarity);
+        const expectedPrice = Math.floor(RARITY_PRICES[rarity] * SELL_PRICE_MULTIPLIER);
+        expect(sellPrice).toBe(expectedPrice);
+      });
+    });
+
+    it('should return correct sell price for COMMON', () => {
+      const sellPrice = getSellPrice(PokemonRarity.COMMON);
+      expect(sellPrice).toBe(50); // 100 * 0.5
+    });
+
+    it('should return correct sell price for LEGENDARY', () => {
+      const sellPrice = getSellPrice(PokemonRarity.LEGENDARY);
+      expect(sellPrice).toBe(2500); // 5000 * 0.5
+    });
+
+    it('should return correct sell price for MYTHICAL', () => {
+      const sellPrice = getSellPrice(PokemonRarity.MYTHICAL);
+      expect(sellPrice).toBe(5000); // 10000 * 0.5
+    });
+
+    it('should always return an integer', () => {
+      Object.values(PokemonRarity).forEach((rarity) => {
+        const sellPrice = getSellPrice(rarity);
+        expect(Number.isInteger(sellPrice)).toBe(true);
+      });
     });
   });
 

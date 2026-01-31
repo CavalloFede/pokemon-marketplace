@@ -5,6 +5,7 @@ const navItems = [
   { path: '/', label: 'Home', icon: '🏠' },
   { path: '/shop', label: 'Shop', icon: '🛒' },
   { path: '/collection', label: 'Collection', icon: '📦' },
+  { path: '/evolution', label: 'Evolution', icon: '✨' },
   { path: '/pokedex', label: 'Pokedex', icon: '📱' },
   { path: '/trades', label: 'Trades', icon: '🔄' },
   { path: '/profile', label: 'Profile', icon: '👤' },
@@ -114,18 +115,18 @@ export default function Layout() {
       {/* Mobile Nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 safe-area-pb">
         <div className="flex justify-around py-2">
-          {navItems.slice(0, 5).map((item) => (
+          {navItems.slice(0, 6).map((item) => (
             <Link
               key={item.path}
               to={item.path}
-              className={`flex flex-col items-center p-2 ${
+              className={`flex flex-col items-center p-1 ${
                 location.pathname === item.path
                   ? 'text-pokemon-electric'
                   : 'text-gray-400'
               }`}
             >
-              <span className="text-xl">{item.icon}</span>
-              <span className="text-xs mt-1">{item.label}</span>
+              <span className="text-lg">{item.icon}</span>
+              <span className="text-[10px] mt-0.5">{item.label}</span>
             </Link>
           ))}
         </div>

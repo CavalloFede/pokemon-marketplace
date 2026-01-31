@@ -1,54 +1,17 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { CognitoJwtVerifier } from 'aws-jwt-verify';
+import { verifyIdToken } from '../lib/firebase.js';
 
 // Extend FastifyRequest to include user info
 declare module 'fastify' {
   interface FastifyRequest {
     userId?: string;
-    cognitoId?: string;
+    firebaseUid?: string;
     email?: string;
   }
 }
 
-// JWT Verifier for Cognito tokens
-let verifier: CognitoJwtVerifier<{
-  userPoolId: string;
-  tokenUse: 'access';
-  clientId: string;
-}> | null = null;
-
-function getVerifier() {
-  if (!verifier) {
-    const userPoolId = process.env.COGNITO_USER_POOL_ID;
-    const clientId = process.env.COGNITO_CLIENT_ID;
-
-    if (!userPoolId || !clientId) {
-      throw new Error('Cognito configuration missing');
-    }
-
-    verifier = CognitoJwtVerifier.create({
-      userPoolId,
-      tokenUse: 'access',
-      clientId
-    });
-  }
-  return verifier;
-}
-
-interface CognitoTokenPayload {
-  sub: string;
-  email?: string;
-  'cognito:username'?: string;
-  token_use: string;
-  auth_time: number;
-  iss: string;
-  exp: number;
-  iat: number;
-  client_id: string;
-}
-
 /**
- * Auth middleware - verifies JWT and attaches user info to request
+ * Auth middleware - verifies Firebase ID token and attaches user info to request
  */
 export async function authMiddleware(
   request: FastifyRequest,
@@ -63,33 +26,24 @@ export async function authMiddleware(
 
     const token = authHeader.substring(7);
 
-    // For development without Cognito
-    if (process.env.NODE_ENV === 'development' && process.env.SKIP_AUTH === 'true') {
-      // Use a test user
-      request.userId = process.env.TEST_USER_ID || 'test-user-id';
-      request.cognitoId = 'test-cognito-id';
-      request.email = 'test@example.com';
-      return;
-    }
-
-    // Verify token with Cognito
-    const payload = await getVerifier().verify(token) as CognitoTokenPayload;
+    // Verify token with Firebase
+    const decodedToken = await verifyIdToken(token);
 
     // Attach user info to request
-    request.cognitoId = payload.sub;
-    request.email = payload.email;
+    request.firebaseUid = decodedToken.uid;
+    request.email = decodedToken.email;
 
     // Get internal user ID from database
     const { prisma } = await import('../lib/prisma.js');
     const user = await prisma.user.findUnique({
-      where: { cognitoId: payload.sub },
+      where: { firebaseUid: decodedToken.uid },
       select: { id: true }
     });
 
     if (user) {
       request.userId = user.id;
     } else {
-      // User exists in Cognito but not in our DB yet
+      // User exists in Firebase but not in our DB yet
       // This can happen on first login - let the route handle user creation
       request.userId = undefined;
     }
@@ -115,20 +69,13 @@ export async function optionalAuthMiddleware(
 
     const token = authHeader.substring(7);
 
-    if (process.env.NODE_ENV === 'development' && process.env.SKIP_AUTH === 'true') {
-      request.userId = process.env.TEST_USER_ID || 'test-user-id';
-      request.cognitoId = 'test-cognito-id';
-      request.email = 'test@example.com';
-      return;
-    }
-
-    const payload = await getVerifier().verify(token) as CognitoTokenPayload;
-    request.cognitoId = payload.sub;
-    request.email = payload.email;
+    const decodedToken = await verifyIdToken(token);
+    request.firebaseUid = decodedToken.uid;
+    request.email = decodedToken.email;
 
     const { prisma } = await import('../lib/prisma.js');
     const user = await prisma.user.findUnique({
-      where: { cognitoId: payload.sub },
+      where: { firebaseUid: decodedToken.uid },
       select: { id: true }
     });
 

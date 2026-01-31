@@ -1,5 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { pokemonService } from '../services/pokemon.service.js';
+import { sellService } from '../services/sell.service.js';
+import { evolutionService } from '../services/evolution.service.js';
 
 interface CollectionQuery {
   rarity?: string;
@@ -151,6 +153,134 @@ export async function pokemonRoutes(app: FastifyInstance) {
         }
         app.log.error(error);
         return reply.status(500).send({ error: 'Failed to update pokemon' });
+      }
+    }
+  );
+
+  // GET /pokemon/:id/sell-preview - Get sell price preview
+  app.get<{ Params: { id: string } }>('/:id/sell-preview', async (request, reply) => {
+    const userId = (request as any).userId;
+
+    if (!userId) {
+      return reply.status(401).send({ error: 'Unauthorized' });
+    }
+
+    const { id } = request.params;
+
+    try {
+      const preview = await sellService.getSellPricePreview(userId, id);
+      return preview;
+    } catch (error) {
+      app.log.error(error);
+      return reply.status(500).send({ error: 'Failed to get sell preview' });
+    }
+  });
+
+  // POST /pokemon/:id/sell - Sell a pokemon
+  app.post<{ Params: { id: string } }>('/:id/sell', async (request, reply) => {
+    const userId = (request as any).userId;
+
+    if (!userId) {
+      return reply.status(401).send({ error: 'Unauthorized' });
+    }
+
+    const { id } = request.params;
+
+    try {
+      const result = await sellService.sellPokemon(userId, id);
+
+      return {
+        success: true,
+        coinsReceived: result.coinsReceived,
+        newBalance: result.newBalance,
+        soldPokemon: {
+          speciesId: result.speciesId,
+          speciesName: result.speciesName
+        }
+      };
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message === 'Pokemon not found') {
+          return reply.status(404).send({ error: error.message });
+        }
+        return reply.status(400).send({ error: error.message });
+      }
+      app.log.error(error);
+      return reply.status(500).send({ error: 'Failed to sell pokemon' });
+    }
+  });
+
+  // GET /pokemon/evolution-ready - Get all Pokemon ready to evolve
+  app.get('/evolution-ready', async (request, reply) => {
+    const userId = (request as any).userId;
+
+    if (!userId) {
+      return reply.status(401).send({ error: 'Unauthorized' });
+    }
+
+    try {
+      const readyPokemon = await evolutionService.getEvolutionReadyPokemon(userId);
+      return { pokemon: readyPokemon };
+    } catch (error) {
+      app.log.error(error);
+      return reply.status(500).send({ error: 'Failed to get evolution-ready pokemon' });
+    }
+  });
+
+  // POST /pokemon/:id/evolve - Evolve a Pokemon
+  app.post<{ Params: { id: string } }>('/:id/evolve', async (request, reply) => {
+    const userId = (request as any).userId;
+
+    if (!userId) {
+      return reply.status(401).send({ error: 'Unauthorized' });
+    }
+
+    const { id } = request.params;
+
+    try {
+      const result = await evolutionService.evolvePokemon(userId, id);
+      return result;
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message === 'Pokemon not found') {
+          return reply.status(404).send({ error: error.message });
+        }
+        return reply.status(400).send({ error: error.message });
+      }
+      app.log.error(error);
+      return reply.status(500).send({ error: 'Failed to evolve pokemon' });
+    }
+  });
+
+  // PATCH /pokemon/:id/evolution-settings - Update evolution notification settings
+  app.patch<{ Params: { id: string }; Body: { suppressNotification: boolean } }>(
+    '/:id/evolution-settings',
+    async (request, reply) => {
+      const userId = (request as any).userId;
+
+      if (!userId) {
+        return reply.status(401).send({ error: 'Unauthorized' });
+      }
+
+      const { id } = request.params;
+      const { suppressNotification } = request.body;
+
+      if (typeof suppressNotification !== 'boolean') {
+        return reply.status(400).send({ error: 'suppressNotification must be a boolean' });
+      }
+
+      try {
+        await evolutionService.updateEvolutionSettings(userId, id, suppressNotification);
+        return { success: true };
+      } catch (error) {
+        if (error instanceof Error) {
+          if (error.message === 'Pokemon not found') {
+            return reply.status(404).send({ error: error.message });
+          }
+          return reply.status(400).send({ error: error.message });
+        }
+        app.log.error(error);
+        return reply.status(500).send({ error: 'Failed to update evolution settings' });
       }
     }
   );

@@ -1,6 +1,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { api } from '../services/api';
+import {
+  signInWithGoogle,
+  signOut as firebaseSignOut,
+  getIdToken,
+  onAuthChange,
+  setMockLoggedIn,
+  IS_MOCK_MODE
+} from '../services/firebase';
 
 interface User {
   id: string;
@@ -19,7 +27,7 @@ interface AuthState {
   // Actions
   setUser: (user: User | null) => void;
   setCoins: (coins: number) => void;
-  login: (code: string, redirectUri: string) => Promise<void>;
+  login: () => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   clearError: () => void;
@@ -42,17 +50,27 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      login: async (code, redirectUri) => {
+      login: async () => {
         set({ isLoading: true, error: null });
         try {
-          const result = await api.handleOAuthCallback(code, redirectUri);
+          // Sign in with Google via Firebase popup
+          const result = await signInWithGoogle();
 
-          // Store tokens
-          api.setTokens(result.tokens.accessToken, result.tokens.refreshToken);
+          if (!result) {
+            throw new Error('Sign in cancelled');
+          }
 
-          // Set user
+          // Set mock state if in mock mode
+          if (IS_MOCK_MODE) {
+            setMockLoggedIn(true);
+          }
+
+          // Send ID token to backend to authenticate and get user data
+          const authResult = await api.authenticate(result.idToken);
+
+          // Set user in store
           set({
-            user: result.user,
+            user: authResult.user,
             isAuthenticated: true,
             isLoading: false
           });
@@ -67,6 +85,15 @@ export const useAuthStore = create<AuthState>()(
 
       logout: async () => {
         try {
+          // Sign out from Firebase
+          await firebaseSignOut();
+
+          // Clear mock state if in mock mode
+          if (IS_MOCK_MODE) {
+            setMockLoggedIn(false);
+          }
+
+          // Notify backend
           await api.logout();
         } catch {
           // Ignore logout errors
@@ -76,16 +103,20 @@ export const useAuthStore = create<AuthState>()(
       },
 
       checkAuth: async () => {
-        // Check if we have a token
-        const token = localStorage.getItem('accessToken');
-        if (!token) {
-          set({ isLoading: false, isAuthenticated: false });
-          return;
-        }
-
         set({ isLoading: true });
+
         try {
-          const userData = await api.getCurrentUser();
+          // Get current Firebase ID token
+          const idToken = await getIdToken();
+
+          if (!idToken) {
+            set({ isLoading: false, isAuthenticated: false, user: null });
+            return;
+          }
+
+          // Verify with backend and get user data
+          const userData = await api.getCurrentUser(idToken);
+
           set({
             user: {
               id: userData.id,
@@ -98,8 +129,10 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false
           });
         } catch {
-          // Token invalid, clear it
-          api.clearTokens();
+          // Token invalid or user not found
+          if (IS_MOCK_MODE) {
+            setMockLoggedIn(false);
+          }
           set({
             user: null,
             isAuthenticated: false,
@@ -117,7 +150,17 @@ export const useAuthStore = create<AuthState>()(
   )
 );
 
-// Set up unauthorized handler
+// Subscribe to Firebase auth state changes
+onAuthChange((firebaseUser) => {
+  const store = useAuthStore.getState();
+
+  if (!firebaseUser && store.isAuthenticated) {
+    // User signed out from Firebase
+    store.logout();
+  }
+});
+
+// Set up unauthorized handler for API
 api.setOnUnauthorized(() => {
   useAuthStore.getState().logout();
 });

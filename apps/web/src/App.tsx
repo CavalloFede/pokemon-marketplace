@@ -11,8 +11,8 @@ const Collection = lazy(() => import('./pages/Collection'));
 const Pokedex = lazy(() => import('./pages/Pokedex'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Trades = lazy(() => import('./pages/Trades'));
+const Evolution = lazy(() => import('./pages/Evolution'));
 const Login = lazy(() => import('./pages/Login'));
-const AuthCallback = lazy(() => import('./components/auth/AuthCallback'));
 
 function LoadingSpinner() {
   return (
@@ -35,7 +35,6 @@ function App() {
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
-        <Route path="/auth/callback" element={<AuthCallback />} />
 
         {/* Protected routes */}
         <Route
@@ -52,6 +51,7 @@ function App() {
           <Route path="pokedex" element={<Pokedex />} />
           <Route path="profile" element={<Profile />} />
           <Route path="trades" element={<Trades />} />
+          <Route path="evolution" element={<Evolution />} />
         </Route>
       </Routes>
     </Suspense>

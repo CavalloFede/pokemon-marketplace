@@ -57,6 +57,7 @@ export enum TradeStatus {
 export enum CoinTransactionType {
   DAILY_REWARD = 'daily_reward',
   PURCHASE = 'purchase',
+  SALE = 'sale',
   TRADE_SENT = 'trade_sent',
   TRADE_RECEIVED = 'trade_received',
   INITIAL_BONUS = 'initial_bonus',

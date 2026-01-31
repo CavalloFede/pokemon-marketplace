@@ -1,4 +1,4 @@
-import { PokemonRarity, EggCategory } from './enums';
+import { PokemonRarity, EggCategory } from './enums.js';
 
 // ============================================
 // Pricing
@@ -95,6 +95,65 @@ export const INITIAL_COINS = 500;
  * Probability of getting a shiny pokemon (1/4096)
  */
 export const SHINY_RATE = 1 / 4096;
+
+// ============================================
+// Selling
+// ============================================
+
+/**
+ * Multiplier for selling pokemon (50% of base price)
+ */
+export const SELL_PRICE_MULTIPLIER = 0.5;
+
+// ============================================
+// Leveling System
+// ============================================
+
+/**
+ * Maximum level a Pokemon can reach
+ */
+export const MAX_LEVEL = 100;
+
+/**
+ * Base experience points gained per hour (passive leveling)
+ */
+export const BASE_EXP_PER_HOUR = 10;
+
+/**
+ * Calculate experience needed to reach a specific level
+ * Formula: level^2 * 10 (e.g., level 10 = 1000 exp total)
+ */
+export function getExpForLevel(level: number): number {
+  return level * level * 10;
+}
+
+/**
+ * Calculate experience needed for next level
+ */
+export function getExpToNextLevel(currentLevel: number, currentExp: number): number {
+  if (currentLevel >= MAX_LEVEL) return 0;
+  const expForNext = getExpForLevel(currentLevel + 1);
+  return Math.max(0, expForNext - currentExp);
+}
+
+/**
+ * Calculate level from total experience
+ */
+export function getLevelFromExp(totalExp: number): number {
+  // Inverse of exp = level^2 * 10 => level = sqrt(exp / 10)
+  const level = Math.floor(Math.sqrt(totalExp / 10));
+  return Math.min(Math.max(1, level), MAX_LEVEL);
+}
+
+/**
+ * Calculate passive experience gained over time
+ * Faster at low levels, slower at high levels
+ */
+export function calculatePassiveExp(hoursElapsed: number, currentLevel: number): number {
+  // Diminishing returns: exp per hour decreases as level increases
+  const levelMultiplier = Math.max(0.1, 1 - (currentLevel / MAX_LEVEL) * 0.5);
+  return Math.floor(hoursElapsed * BASE_EXP_PER_HOUR * levelMultiplier);
+}
 
 // ============================================
 // Rarity Calculation

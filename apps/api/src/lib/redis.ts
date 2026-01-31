@@ -1,17 +1,19 @@
 import Redis from 'ioredis';
+import type { Redis as RedisType } from 'ioredis';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 
-export const redis = new Redis(REDIS_URL, {
+// @ts-expect-error - ioredis default export typing issue with ESM
+export const redis: RedisType = new Redis(REDIS_URL, {
   maxRetriesPerRequest: 3,
-  retryStrategy(times) {
+  retryStrategy(times: number) {
     const delay = Math.min(times * 50, 2000);
     return delay;
   },
   lazyConnect: true
 });
 
-redis.on('error', (error) => {
+redis.on('error', (error: Error) => {
   console.error('Redis connection error:', error);
 });
 

@@ -1,8 +1,8 @@
 // Note: Zod will be installed in each app that needs validation
 // These are the schema definitions that can be imported
 
-import { TradeStatus } from './enums';
-import { MAX_TEAM_SIZE, MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE } from './constants';
+import { TradeStatus } from './enums.js';
+import { MAX_TEAM_SIZE, MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE } from './constants.js';
 
 // ============================================
 // Schema Type Definitions (for documentation)

@@ -75,40 +75,26 @@ module "cache" {
   max_data_storage_gb = var.redis_max_storage_gb
 }
 
-# Auth
-module "auth" {
-  source = "../../modules/auth"
-
-  project_name         = local.project_name
-  environment          = local.environment
-  google_client_id     = var.google_client_id
-  google_client_secret = var.google_client_secret
-  callback_urls        = var.auth_callback_urls
-  logout_urls          = var.auth_logout_urls
-}
-
 # API (requires Lambda zip to exist)
+# Note: Authentication is now handled by Firebase (configured via environment variables)
 module "api" {
   source = "../../modules/api"
 
-  project_name          = local.project_name
-  environment           = local.environment
-  subnet_ids            = module.networking.private_subnet_ids
-  security_group_id     = module.networking.lambda_security_group_id
-  lambda_zip_path       = var.lambda_zip_path
-  lambda_memory         = var.lambda_memory
-  db_secret_arn         = module.database.secret_arn
-  db_host               = module.database.cluster_endpoint
-  db_name               = var.db_name
-  db_username           = "postgres"
-  db_password           = "" # Retrieved from secrets manager at runtime
-  redis_url             = module.cache.connection_string
-  cognito_user_pool_id  = module.auth.user_pool_id
-  cognito_user_pool_arn = module.auth.user_pool_arn
-  cognito_client_id     = module.auth.client_id
-  cors_origins          = var.cors_origins
+  project_name      = local.project_name
+  environment       = local.environment
+  subnet_ids        = module.networking.private_subnet_ids
+  security_group_id = module.networking.lambda_security_group_id
+  lambda_zip_path   = var.lambda_zip_path
+  lambda_memory     = var.lambda_memory
+  db_secret_arn     = module.database.secret_arn
+  db_host           = module.database.cluster_endpoint
+  db_name           = var.db_name
+  db_username       = "postgres"
+  db_password       = "" # Retrieved from secrets manager at runtime
+  redis_url         = module.cache.connection_string
+  cors_origins      = var.cors_origins
 
-  depends_on = [module.database, module.cache, module.auth]
+  depends_on = [module.database, module.cache]
 }
 
 # Frontend

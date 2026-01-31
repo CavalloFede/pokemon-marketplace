@@ -60,20 +60,10 @@ variable "redis_url" {
   type        = string
 }
 
-variable "cognito_user_pool_id" {
-  description = "Cognito User Pool ID"
-  type        = string
-}
-
-variable "cognito_user_pool_arn" {
-  description = "Cognito User Pool ARN"
-  type        = string
-}
-
-variable "cognito_client_id" {
-  description = "Cognito Client ID"
-  type        = string
-}
+# Note: Authentication is now handled by Firebase
+# Firebase credentials are configured via environment variables:
+# - FIREBASE_PROJECT_ID
+# - FIREBASE_SERVICE_ACCOUNT_KEY (base64 encoded)
 
 variable "cors_origins" {
   description = "Allowed CORS origins"

@@ -12,6 +12,7 @@ export const queryKeys = {
   shopItems: ['shop', 'items'] as const,
   trades: ['trades'] as const,
   trade: (id: string) => ['trades', id] as const,
+  evolutionReady: ['evolution', 'ready'] as const,
 };
 
 // User hooks
@@ -198,6 +199,42 @@ export function useRejectTrade() {
     mutationFn: (tradeId: string) => api.rejectTrade(tradeId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.trades });
+    },
+  });
+}
+
+// Evolution hooks
+export function useEvolutionReady() {
+  return useQuery({
+    queryKey: queryKeys.evolutionReady,
+    queryFn: async () => {
+      const result = await api.getEvolutionReady();
+      return result.pokemon;
+    },
+  });
+}
+
+export function useEvolvePokemon() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (pokemonId: string) => api.evolvePokemon(pokemonId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.pokemon });
+      queryClient.invalidateQueries({ queryKey: queryKeys.evolutionReady });
+      queryClient.invalidateQueries({ queryKey: queryKeys.pokedex });
+      queryClient.invalidateQueries({ queryKey: queryKeys.pokedexStats });
+    },
+  });
+}
+
+export function useSuppressEvolution() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (pokemonId: string) => api.suppressEvolutionNotification(pokemonId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.evolutionReady });
     },
   });
 }

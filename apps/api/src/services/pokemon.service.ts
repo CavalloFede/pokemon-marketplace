@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { MAX_TEAM_SIZE } from '@pokemon-marketplace/shared';
+import { levelService } from './level.service.js';
 
 interface CollectionFilters {
   rarity?: string[];
@@ -81,7 +82,13 @@ export class PokemonService {
     const [pokemon, total] = await Promise.all([
       prisma.userPokemon.findMany({
         where,
-        include: { species: true },
+        include: {
+          species: {
+            include: {
+              evolvesTo: true
+            }
+          }
+        },
         orderBy,
         skip: (page - 1) * pageSize,
         take: pageSize
@@ -90,7 +97,7 @@ export class PokemonService {
     ]);
 
     return {
-      data: pokemon,
+      data: this.enhanceManyPokemonWithLevelInfo(pokemon),
       total,
       page,
       pageSize,
@@ -102,14 +109,22 @@ export class PokemonService {
    * Get user's team (up to 6 pokemon)
    */
   async getUserTeam(userId: string) {
-    return prisma.userPokemon.findMany({
+    const team = await prisma.userPokemon.findMany({
       where: {
         userId,
         isInTeam: true
       },
-      include: { species: true },
+      include: {
+        species: {
+          include: {
+            evolvesTo: true
+          }
+        }
+      },
       orderBy: { teamPosition: 'asc' }
     });
+
+    return this.enhanceManyPokemonWithLevelInfo(team);
   }
 
   /**
@@ -165,13 +180,25 @@ export class PokemonService {
    * Get single pokemon by ID
    */
   async getPokemonById(userId: string, pokemonId: string) {
-    return prisma.userPokemon.findFirst({
+    const pokemon = await prisma.userPokemon.findFirst({
       where: {
         id: pokemonId,
         userId
       },
-      include: { species: true }
+      include: {
+        species: {
+          include: {
+            evolvesTo: true
+          }
+        }
+      }
     });
+
+    if (!pokemon) {
+      return null;
+    }
+
+    return this.enhancePokemonWithLevelInfo(pokemon);
   }
 
   /**
@@ -201,11 +228,50 @@ export class PokemonService {
       }
     }
 
-    return prisma.userPokemon.update({
+    const updated = await prisma.userPokemon.update({
       where: { id: pokemonId },
       data,
       include: { species: true }
     });
+
+    return this.enhancePokemonWithLevelInfo(updated);
+  }
+
+  /**
+   * Enhance pokemon data with calculated level info
+   */
+  private enhancePokemonWithLevelInfo<T extends {
+    level: number;
+    experience: number;
+    lastExperienceGainAt: Date;
+  }>(pokemon: T) {
+    const levelInfo = levelService.calculateLevelInfo(
+      pokemon.level,
+      pokemon.experience,
+      pokemon.lastExperienceGainAt
+    );
+
+    return {
+      ...pokemon,
+      levelInfo: {
+        level: levelInfo.level,
+        experience: levelInfo.experience,
+        expToNextLevel: levelInfo.expToNextLevel,
+        expProgress: levelInfo.expProgress,
+        isMaxLevel: levelInfo.isMaxLevel
+      }
+    };
+  }
+
+  /**
+   * Enhance multiple pokemon with level info
+   */
+  private enhanceManyPokemonWithLevelInfo<T extends {
+    level: number;
+    experience: number;
+    lastExperienceGainAt: Date;
+  }>(pokemonList: T[]) {
+    return pokemonList.map(p => this.enhancePokemonWithLevelInfo(p));
   }
 }
 

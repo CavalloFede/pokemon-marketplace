@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { usePokemon, useTeam, useUpdateTeam } from '../hooks/useApi';
+import { usePokemon, useTeam, useUpdateTeam, useEvolutionReady } from '../hooks/useApi';
 
 const RARITY_OPTIONS = [
   { value: '', label: 'All Rarity' },
@@ -38,6 +38,15 @@ interface CollectionPokemon {
   isInTeam: boolean;
   teamPosition: number | null;
   isFavorite: boolean;
+  level: number;
+  experience: number;
+  levelInfo?: {
+    level: number;
+    experience: number;
+    expToNextLevel: number;
+    expProgress: number;
+    isMaxLevel: boolean;
+  };
   species: {
     id: number;
     name: string;
@@ -63,6 +72,7 @@ export default function Collection() {
   const [search, setSearch] = useState('');
   const [rarity, setRarity] = useState('');
   const [selectedPokemon, setSelectedPokemon] = useState<CollectionPokemon | null>(null);
+  const [showInfo, setShowInfo] = useState(false);
 
   const { data: pokemonData, isLoading } = usePokemon({
     rarity: rarity || undefined,
@@ -70,6 +80,7 @@ export default function Collection() {
     limit: 100,
   });
   const { data: teamData } = useTeam();
+  const { data: evolutionReady } = useEvolutionReady();
   const updateTeam = useUpdateTeam();
 
   const pokemon = pokemonData?.pokemon ?? [];
@@ -137,8 +148,44 @@ export default function Collection() {
               </option>
             ))}
           </select>
+          <button
+            onClick={() => setShowInfo(!showInfo)}
+            className="text-gray-400 hover:text-white text-sm"
+            title="How leveling works"
+          >
+            {showInfo ? 'Hide Info' : '? Info'}
+          </button>
         </div>
       </div>
+
+      {/* Leveling Info */}
+      {showInfo && (
+        <div className="card border border-gray-700 text-sm space-y-2">
+          <h3 className="font-bold text-pokemon-electric">How Leveling & Evolution Works</h3>
+          <ul className="space-y-1 text-gray-300">
+            <li><span className="text-gray-500">-</span> Pokemon gain <span className="text-pokemon-electric">10 XP/hour</span> passively over time.</li>
+            <li><span className="text-gray-500">-</span> XP gain slows down at higher levels (diminishing returns).</li>
+            <li><span className="text-gray-500">-</span> XP required per level: <span className="text-gray-400">level^2 x 10</span> (e.g. Lv.10 = 1000 XP).</li>
+            <li><span className="text-gray-500">-</span> Max level is <span className="text-pokemon-electric">100</span>.</li>
+            <li><span className="text-gray-500">-</span> When a Pokemon reaches the required level, it can <span className="text-purple-400">evolve</span>.</li>
+            <li><span className="text-gray-500">-</span> Shiny Pokemon stay shiny after evolution.</li>
+          </ul>
+        </div>
+      )}
+
+      {/* Evolution Ready Banner */}
+      {evolutionReady && evolutionReady.length > 0 && (
+        <Link
+          to="/evolution"
+          className="card border border-purple-500/30 bg-purple-900/20 hover:border-purple-500/60 transition-colors block"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-2xl animate-pulse">✨</span>
+            <span className="font-bold">{evolutionReady.length} Pokemon ready to evolve!</span>
+            <span className="text-gray-400 text-sm ml-auto">Go to Evolution →</span>
+          </div>
+        </Link>
+      )}
 
       {/* Pokemon Grid */}
       {pokemon.length > 0 ? (
@@ -152,10 +199,7 @@ export default function Collection() {
               <div className="aspect-square bg-gray-700 rounded-lg flex items-center justify-center relative">
                 {p.species.spriteUrl ? (
                   <img
-                    src={p.isShiny
-                      ? p.species.spriteUrl.replace('/sprites/pokemon/', '/sprites/pokemon/shiny/')
-                      : p.species.spriteUrl
-                    }
+                    src={p.isShiny ? p.species.spriteShinyUrl : p.species.spriteUrl}
                     alt={p.species.name}
                     className="w-full h-full object-contain pixelated"
                   />
@@ -173,6 +217,9 @@ export default function Collection() {
               </div>
               <p className="text-xs text-center mt-1 truncate capitalize">
                 {p.nickname || p.species.name}
+              </p>
+              <p className="text-xs text-center text-pokemon-electric">
+                Lv.{p.levelInfo?.level ?? p.level ?? 1}
               </p>
             </div>
           ))}
@@ -223,10 +270,7 @@ export default function Collection() {
             <div className="bg-gray-700 rounded-lg p-6 mb-4 flex items-center justify-center">
               {selectedPokemon.species.spriteUrl ? (
                 <img
-                  src={selectedPokemon.isShiny
-                    ? selectedPokemon.species.spriteUrl.replace('/sprites/pokemon/', '/sprites/pokemon/shiny/')
-                    : selectedPokemon.species.spriteUrl
-                  }
+                  src={selectedPokemon.isShiny ? selectedPokemon.species.spriteShinyUrl : selectedPokemon.species.spriteUrl}
                   alt={selectedPokemon.species.name}
                   className="w-32 h-32 pixelated"
                 />
@@ -235,7 +279,32 @@ export default function Collection() {
               )}
             </div>
 
-            <div className="space-y-2 mb-4">
+            <div className="space-y-3 mb-4">
+              {/* Level & XP Progress */}
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-gray-400">Level</span>
+                  <span className="text-pokemon-electric font-bold">
+                    {selectedPokemon.levelInfo?.level ?? selectedPokemon.level ?? 1}
+                    {selectedPokemon.levelInfo?.isMaxLevel && ' (MAX)'}
+                  </span>
+                </div>
+                {!selectedPokemon.levelInfo?.isMaxLevel && (
+                  <div className="relative">
+                    <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-pokemon-electric to-pokemon-fire transition-all"
+                        style={{ width: `${selectedPokemon.levelInfo?.expProgress ?? 0}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>{selectedPokemon.levelInfo?.expProgress ?? 0}%</span>
+                      <span>{selectedPokemon.levelInfo?.expToNextLevel ?? '?'} XP to next</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-between">
                 <span className="text-gray-400">Pokedex #</span>
                 <span>{selectedPokemon.species.id}</span>

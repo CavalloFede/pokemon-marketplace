@@ -5,8 +5,10 @@ import {
   ObtainedMethod,
   CoinTransactionType,
   EGG_WEIGHTS,
-  SHINY_RATE
+  SHINY_RATE,
+  getExpForLevel
 } from '@pokemon-marketplace/shared';
+import { levelService } from './level.service.js';
 
 interface WeightedItem {
   rarity: PokemonRarity;
@@ -108,6 +110,10 @@ export class ShopService {
     // Roll for shiny
     const isShiny = rollShiny();
 
+    // Get initial level based on evolution stage
+    const initialLevel = await levelService.getInitialLevel(speciesId);
+    const initialExp = getExpForLevel(initialLevel);
+
     // Execute transaction
     const result = await prisma.$transaction(async (tx) => {
       // Deduct coins
@@ -134,13 +140,16 @@ export class ShopService {
         });
       }
 
-      // Create user pokemon
+      // Create user pokemon with initial level
       const userPokemon = await tx.userPokemon.create({
         data: {
           userId,
           speciesId,
           isShiny,
-          obtainedMethod
+          obtainedMethod,
+          level: initialLevel,
+          experience: initialExp,
+          lastExperienceGainAt: new Date()
         },
         include: { species: true }
       });
@@ -160,14 +169,16 @@ export class ShopService {
             userId_speciesId: { userId, speciesId }
           },
           data: {
-            timesObtained: { increment: 1 }
+            timesObtained: { increment: 1 },
+            hasCurrently: true
           }
         });
       } else {
         await tx.userPokedex.create({
           data: {
             userId,
-            speciesId
+            speciesId,
+            hasCurrently: true
           }
         });
       }

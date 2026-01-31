@@ -1,8 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+
+interface MockUser {
+  id: string;
+  email: string;
+  displayName: string;
+  coins: number;
+}
 
 // Mock the auth store
-const mockAuthStore = {
+const mockAuthStore: {
+  user: MockUser | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  setUser: ReturnType<typeof vi.fn>;
+  setIsAuthenticated: ReturnType<typeof vi.fn>;
+  setIsLoading: ReturnType<typeof vi.fn>;
+  logout: ReturnType<typeof vi.fn>;
+  login: ReturnType<typeof vi.fn>;
+} = {
   user: null,
   isAuthenticated: false,
   isLoading: true,
@@ -10,6 +25,7 @@ const mockAuthStore = {
   setIsAuthenticated: vi.fn(),
   setIsLoading: vi.fn(),
   logout: vi.fn(),
+  login: vi.fn(),
 };
 
 vi.mock('../store/authStore', () => ({
@@ -56,21 +72,10 @@ describe('useAuth hook', () => {
     });
   });
 
-  describe('login URL generation', () => {
-    it('should generate correct Cognito login URL', () => {
-      const domain = 'test.auth.us-east-1.amazoncognito.com';
-      const clientId = 'test-client-id';
-      const redirectUri = 'http://localhost:5173/auth/callback';
-
-      const loginUrl = `https://${domain}/oauth2/authorize?` +
-        `client_id=${clientId}&` +
-        `response_type=code&` +
-        `scope=email+openid+profile&` +
-        `redirect_uri=${encodeURIComponent(redirectUri)}`;
-
-      expect(loginUrl).toContain('oauth2/authorize');
-      expect(loginUrl).toContain('client_id=test-client-id');
-      expect(loginUrl).toContain('response_type=code');
+  describe('login', () => {
+    it('should call login function', () => {
+      mockAuthStore.login();
+      expect(mockAuthStore.login).toHaveBeenCalled();
     });
   });
 });

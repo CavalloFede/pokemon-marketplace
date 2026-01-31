@@ -5,6 +5,8 @@ interface PokedexFilters {
   generation?: number;
   types?: string[];
   obtained?: boolean;
+  owned?: boolean;    // Filter by currently owned
+  seen?: boolean;     // Filter by seen (ever obtained)
   search?: string;
   page?: number;
   pageSize?: number;
@@ -61,17 +63,37 @@ export class PokedexService {
       userPokedex.map(p => [p.speciesId, p])
     );
 
-    // Combine data
-    let entries = species.map(s => ({
-      species: s,
-      obtained: obtainedMap.has(s.id),
-      firstObtainedAt: obtainedMap.get(s.id)?.firstObtainedAt || null,
-      timesObtained: obtainedMap.get(s.id)?.timesObtained || 0
-    }));
+    // Combine data with seen/owned status
+    let entries = species.map(s => {
+      const pokedexEntry = obtainedMap.get(s.id);
+      const seen = pokedexEntry !== undefined; // User has obtained at least once
+      const owned = pokedexEntry?.hasCurrently ?? false; // User currently has one
+
+      return {
+        species: s,
+        obtained: seen,
+        firstObtainedAt: pokedexEntry?.firstObtainedAt || null,
+        timesObtained: pokedexEntry?.timesObtained || 0,
+        // Seen vs Owned tracking
+        seen,
+        owned,
+        hasCurrently: owned
+      };
+    });
 
     // Filter by obtained status if requested
     if (obtained !== undefined) {
       entries = entries.filter(e => e.obtained === obtained);
+    }
+
+    // Filter by owned status if requested
+    if (filters.owned !== undefined) {
+      entries = entries.filter(e => e.owned === filters.owned);
+    }
+
+    // Filter by seen status if requested
+    if (filters.seen !== undefined) {
+      entries = entries.filter(e => e.seen === filters.seen);
     }
 
     return {
@@ -87,10 +109,18 @@ export class PokedexService {
    * Get pokedex completion stats
    */
   async getPokedexStats(userId: string) {
-    // Total obtained
-    const obtained = await prisma.userPokedex.count({
+    // Total seen (ever obtained)
+    const seen = await prisma.userPokedex.count({
       where: { userId }
     });
+
+    // Total owned (currently has)
+    const owned = await prisma.userPokedex.count({
+      where: { userId, hasCurrently: true }
+    });
+
+    // Legacy: obtained = seen
+    const obtained = seen;
 
     // By generation
     const byGeneration: Record<number, { total: number; obtained: number }> = {};
@@ -159,11 +189,88 @@ export class PokedexService {
     return {
       totalSpecies: TOTAL_POKEMON_SPECIES,
       obtained,
+      seen,
+      owned,
       percentage: Math.round((obtained / TOTAL_POKEMON_SPECIES) * 100 * 10) / 10,
+      seenPercentage: Math.round((seen / TOTAL_POKEMON_SPECIES) * 100 * 10) / 10,
+      ownedPercentage: Math.round((owned / TOTAL_POKEMON_SPECIES) * 100 * 10) / 10,
       byGeneration,
       byType,
       byRarity
     };
+  }
+
+  /**
+   * Update hasCurrently status for a species based on user's current ownership
+   */
+  async updateHasCurrently(userId: string, speciesId: number): Promise<void> {
+    // Count how many of this species the user currently has
+    const count = await prisma.userPokemon.count({
+      where: {
+        userId,
+        speciesId
+      }
+    });
+
+    // Update the pokedex entry
+    await prisma.userPokedex.updateMany({
+      where: {
+        userId,
+        speciesId
+      },
+      data: {
+        hasCurrently: count > 0
+      }
+    });
+  }
+
+  /**
+   * Batch update hasCurrently for multiple species
+   */
+  async updateHasCurrentlyBatch(userId: string, speciesIds: number[]): Promise<void> {
+    for (const speciesId of speciesIds) {
+      await this.updateHasCurrently(userId, speciesId);
+    }
+  }
+
+  /**
+   * Recalculate hasCurrently for all of a user's pokedex entries
+   */
+  async recalculateAllHasCurrently(userId: string): Promise<number> {
+    // Get all species the user has in their pokedex
+    const pokedexEntries = await prisma.userPokedex.findMany({
+      where: { userId },
+      select: { speciesId: true }
+    });
+
+    // Get all species the user currently owns
+    const ownedSpecies = await prisma.userPokemon.groupBy({
+      by: ['speciesId'],
+      where: { userId }
+    });
+
+    const ownedSpeciesIds = new Set(ownedSpecies.map(p => p.speciesId));
+
+    let updated = 0;
+
+    // Update each pokedex entry
+    for (const entry of pokedexEntries) {
+      const hasCurrently = ownedSpeciesIds.has(entry.speciesId);
+
+      await prisma.userPokedex.update({
+        where: {
+          userId_speciesId: {
+            userId,
+            speciesId: entry.speciesId
+          }
+        },
+        data: { hasCurrently }
+      });
+
+      updated++;
+    }
+
+    return updated;
   }
 }
 

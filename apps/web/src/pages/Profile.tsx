@@ -9,6 +9,7 @@ interface TeamPokemon {
   species: {
     name: string;
     spriteUrl: string;
+    spriteShinyUrl: string;
   };
 }
 
@@ -96,7 +97,7 @@ export default function Profile() {
                     {pokemon.species.spriteUrl ? (
                       <img
                         src={pokemon.isShiny
-                          ? pokemon.species.spriteUrl.replace('/sprites/pokemon/', '/sprites/pokemon/shiny/')
+                          ? pokemon.species.spriteShinyUrl
                           : pokemon.species.spriteUrl
                         }
                         alt={pokemon.species.name}

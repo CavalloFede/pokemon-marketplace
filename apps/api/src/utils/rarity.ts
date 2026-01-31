@@ -1,4 +1,4 @@
-import { PokemonRarity, RARITY_PRICES, RARITY_THRESHOLDS } from '@pokemon-marketplace/shared';
+import { PokemonRarity, RARITY_PRICES, RARITY_THRESHOLDS, SELL_PRICE_MULTIPLIER } from '@pokemon-marketplace/shared';
 
 interface SpeciesData {
   capture_rate: number;
@@ -48,6 +48,14 @@ export function calculateRarity(species: SpeciesData): PokemonRarity {
  */
 export function getPriceForRarity(rarity: PokemonRarity): number {
   return RARITY_PRICES[rarity];
+}
+
+/**
+ * Get the sell price for a Pokemon based on its rarity
+ * Returns 50% of the base price
+ */
+export function getSellPrice(rarity: PokemonRarity): number {
+  return Math.floor(RARITY_PRICES[rarity] * SELL_PRICE_MULTIPLIER);
 }
 
 /**

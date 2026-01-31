@@ -4,6 +4,9 @@ import helmet from '@fastify/helmet';
 import sensible from '@fastify/sensible';
 import rateLimit from '@fastify/rate-limit';
 
+// Firebase initialization
+import { initializeFirebase } from './lib/firebase.js';
+
 // Middleware
 import { authMiddleware } from './middleware/auth.js';
 
@@ -15,8 +18,12 @@ import { pokemonRoutes } from './routes/pokemon.js';
 import { shopRoutes } from './routes/shop.js';
 import { tradeRoutes } from './routes/trades.js';
 import { pokedexRoutes } from './routes/pokedex.js';
+import metricsRoutes, { trackRequest } from './routes/metrics.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
+  // Initialize Firebase Admin SDK
+  initializeFirebase();
+
   const app = Fastify({
     logger: {
       level: process.env.LOG_LEVEL || 'info',
@@ -28,7 +35,9 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // Register plugins
   await app.register(cors, {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    origin: process.env.NODE_ENV === 'production'
+      ? process.env.CORS_ORIGIN
+      : true, // Allow all origins in development
     credentials: true
   });
 
@@ -40,9 +49,20 @@ export async function buildApp(): Promise<FastifyInstance> {
     timeWindow: '1 minute'
   });
 
+  // Metrics tracking hook
+  app.addHook('onResponse', (request, reply, done) => {
+    const route = request.routeOptions?.url || request.url;
+    const method = request.method;
+    const statusCode = reply.statusCode;
+    const latency = reply.elapsedTime;
+    trackRequest(route, method, statusCode, latency);
+    done();
+  });
+
   // Public routes (no auth required)
   await app.register(healthRoutes, { prefix: '/health' });
   await app.register(authRoutes, { prefix: '/auth' });
+  await app.register(metricsRoutes);
 
   // Protected routes (auth required)
   await app.register(async (protectedApp) => {

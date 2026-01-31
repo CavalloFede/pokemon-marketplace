@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useUser, useClaimDailyReward, usePokemon, usePokedexStats, useShopItems } from '../hooks/useApi';
+import { useUser, useClaimDailyReward, usePokemon, usePokedexStats, useShopItems, useEvolutionReady } from '../hooks/useApi';
 import { useAuthStore } from '../store/authStore';
 
 export default function Home() {
@@ -8,6 +9,7 @@ export default function Home() {
   const { data: pokemonData } = usePokemon({ limit: 100 });
   const { data: pokedexStats } = usePokedexStats();
   const { data: shopItems } = useShopItems();
+  const { data: evolutionReady } = useEvolutionReady();
   const claimReward = useClaimDailyReward();
 
   const canClaimDaily = userData?.dailyReward?.canClaim ?? false;
@@ -25,11 +27,25 @@ export default function Home() {
     return 100;
   }
 
+  const [claimMessage, setClaimMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   const handleClaimDaily = async () => {
+    if (!canClaimDaily || claimReward.isPending) return;
+
     try {
-      await claimReward.mutateAsync();
+      const result = await claimReward.mutateAsync();
+      setClaimMessage({
+        type: 'success',
+        text: `+${result.coinsAwarded} coins! Streak: ${result.streakDay} days`
+      });
+      setTimeout(() => setClaimMessage(null), 3000);
     } catch (error) {
       console.error('Failed to claim daily reward:', error);
+      setClaimMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Failed to claim reward'
+      });
+      setTimeout(() => setClaimMessage(null), 3000);
     }
   };
 
@@ -68,6 +84,11 @@ export default function Home() {
                 : `Come back tomorrow! Current streak: ${streak} days`
               }
             </p>
+            {claimMessage && (
+              <p className={`text-sm mt-2 ${claimMessage.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+                {claimMessage.text}
+              </p>
+            )}
           </div>
           <button
             onClick={handleClaimDaily}
@@ -82,6 +103,43 @@ export default function Home() {
           </button>
         </div>
       </div>
+
+      {/* Evolution Ready Banner */}
+      {evolutionReady && evolutionReady.length > 0 && (
+        <Link
+          to="/evolution"
+          className="card border bg-gradient-to-r from-purple-900/30 to-pink-900/30 border-purple-500/30 hover:border-purple-500/60 transition-colors block"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className="text-4xl animate-pulse">✨</span>
+              <div>
+                <h2 className="text-xl font-bold mb-1">
+                  {evolutionReady.length} Pokemon Ready to Evolve!
+                </h2>
+                <p className="text-gray-400">
+                  Click here to evolve your Pokemon
+                </p>
+              </div>
+            </div>
+            <div className="flex -space-x-2">
+              {evolutionReady.slice(0, 3).map((p: any) => (
+                <img
+                  key={p.id}
+                  src={p.currentSpecies.spriteUrl}
+                  alt={p.currentSpecies.name}
+                  className="w-10 h-10 rounded-full bg-gray-700 border-2 border-gray-800"
+                />
+              ))}
+              {evolutionReady.length > 3 && (
+                <div className="w-10 h-10 rounded-full bg-gray-700 border-2 border-gray-800 flex items-center justify-center text-sm font-bold">
+                  +{evolutionReady.length - 3}
+                </div>
+              )}
+            </div>
+          </div>
+        </Link>
+      )}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

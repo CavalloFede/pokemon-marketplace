@@ -52,6 +52,7 @@ enum TradeStatus {
 enum CoinTransactionType {
   daily_reward
   purchase
+  sale
   trade_sent
   trade_received
   initial_bonus
@@ -64,7 +65,7 @@ enum CoinTransactionType {
 
 model User {
   id             String    @id @default(uuid())
-  cognitoId      String    @unique @map("cognito_id")
+  firebaseUid    String    @unique @map("firebase_uid")
   email          String    @unique
   displayName    String    @map("display_name")
   avatarUrl      String?   @map("avatar_url")
@@ -98,10 +99,16 @@ model PokemonSpecies {
   generation    Int
   eggGroups     String[]      @map("egg_groups")
 
+  // Evolution data
+  evolvesFromId  Int?         @map("evolves_from_id")
+  evolutionLevel Int?         @map("evolution_level") // Level required to evolve TO this Pokemon
+
   // Relations
-  userPokemon   UserPokemon[]
+  userPokemon    UserPokemon[]
   pokedexEntries UserPokedex[]
-  shopItems     ShopItem[]
+  shopItems      ShopItem[]
+  evolvesFrom    PokemonSpecies?  @relation("EvolutionChain", fields: [evolvesFromId], references: [id])
+  evolvesTo      PokemonSpecies[] @relation("EvolutionChain")
 
   @@map("pokemon_species")
 }
@@ -118,6 +125,14 @@ model UserPokemon {
   obtainedMethod ObtainedMethod @map("obtained_method")
   obtainedAt     DateTime       @default(now()) @map("obtained_at")
 
+  // Leveling system
+  level                        Int      @default(1)
+  experience                   Int      @default(0)
+  lastExperienceGainAt         DateTime @default(now()) @map("last_experience_gain_at")
+
+  // Evolution settings
+  suppressEvolutionNotification Boolean @default(false) @map("suppress_evolution_notification")
+
   // Relations
   user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   species PokemonSpecies @relation(fields: [speciesId], references: [id])
@@ -133,6 +148,7 @@ model UserPokedex {
   speciesId       Int      @map("species_id")
   firstObtainedAt DateTime @default(now()) @map("first_obtained_at")
   timesObtained   Int      @default(1) @map("times_obtained")
+  hasCurrently    Boolean  @default(true) @map("has_currently") // true if user currently owns at least one
 
   // Relations
   user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)

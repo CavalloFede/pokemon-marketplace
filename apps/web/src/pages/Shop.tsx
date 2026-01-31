@@ -10,10 +10,18 @@ interface HatchResult {
     species: {
       name: string;
       spriteUrl: string;
+      spriteShinyUrl: string;
       rarity: string;
     };
   };
 }
+
+const EGG_NAMES: Record<string, string> = {
+  mystery: 'Mystery Egg',
+  common: 'Common Egg',
+  rare: 'Rare Egg',
+  legendary: 'Legendary Egg',
+};
 
 const EGG_DESCRIPTIONS: Record<string, string> = {
   mystery: 'Contains any Pokemon! Weighted by rarity.',
@@ -103,7 +111,8 @@ export default function Shop() {
             return (
               <div
                 key={egg.id}
-                className={`card transition-all ${canAfford ? 'hover:ring-2 hover:ring-pokemon-electric' : 'opacity-60'}`}
+                onClick={() => canAfford && !purchase.isPending && handlePurchase(egg.id)}
+                className={`card transition-all cursor-pointer ${canAfford ? 'hover:ring-2 hover:ring-pokemon-electric hover:scale-105' : 'opacity-60 cursor-not-allowed'}`}
               >
                 <div className="aspect-square bg-gray-700 rounded-lg mb-3 flex items-center justify-center relative overflow-hidden">
                   <span className={`text-6xl ${isHatching ? 'animate-bounce' : 'animate-wiggle'}`}>
@@ -115,17 +124,13 @@ export default function Shop() {
                     </span>
                   )}
                 </div>
-                <h3 className="font-bold">{egg.name}</h3>
-                <p className="text-sm text-gray-400 mb-2">
-                  {EGG_DESCRIPTIONS[eggType] || 'Random Pokemon'}
+                <h3 className="font-bold text-center">{EGG_NAMES[eggType] || 'Huevo'}</h3>
+                <p className="text-sm text-gray-400 mb-2 text-center">
+                  {EGG_DESCRIPTIONS[eggType] || 'Pokemon aleatorio'}
                 </p>
-                <button
-                  onClick={() => handlePurchase(egg.id)}
-                  disabled={!canAfford || purchase.isPending}
-                  className={`w-full btn ${canAfford ? 'btn-primary' : 'btn-secondary cursor-not-allowed'}`}
-                >
-                  {purchase.isPending ? '...' : `Buy ${egg.price} 🪙`}
-                </button>
+                <div className={`w-full text-center py-2 rounded-lg font-bold ${canAfford ? 'bg-pokemon-electric text-gray-900' : 'bg-gray-600 text-gray-400'}`}>
+                  {purchase.isPending ? '...' : `${egg.price} 🪙`}
+                </div>
               </div>
             );
           })}
@@ -147,7 +152,8 @@ export default function Shop() {
               return (
                 <div
                   key={item.id}
-                  className={`card transition-all ${canAfford ? 'hover:ring-2 hover:ring-pokemon-electric' : 'opacity-60'}`}
+                  onClick={() => canAfford && item.stock !== 0 && !purchase.isPending && handlePurchase(item.id)}
+                  className={`card transition-all cursor-pointer ${canAfford && item.stock !== 0 ? 'hover:ring-2 hover:ring-pokemon-electric hover:scale-105' : 'opacity-60 cursor-not-allowed'}`}
                 >
                   <div className="aspect-square bg-gray-700 rounded-lg mb-3 flex items-center justify-center relative">
                     {species?.spriteUrl ? (
@@ -165,17 +171,13 @@ export default function Shop() {
                       </span>
                     )}
                   </div>
-                  <h3 className="font-bold capitalize">{species?.name || 'Unknown'}</h3>
-                  <p className={`text-sm ${RARITY_COLORS[species?.rarity || 'common']} capitalize`}>
+                  <h3 className="font-bold capitalize text-center">{species?.name || 'Unknown'}</h3>
+                  <p className={`text-sm ${RARITY_COLORS[species?.rarity || 'common']} capitalize text-center`}>
                     {species?.rarity || 'Unknown'}
                   </p>
-                  <button
-                    onClick={() => handlePurchase(item.id)}
-                    disabled={!canAfford || purchase.isPending || item.stock === 0}
-                    className={`w-full btn mt-2 ${canAfford && item.stock > 0 ? 'btn-primary' : 'btn-secondary cursor-not-allowed'}`}
-                  >
+                  <div className={`w-full text-center py-2 rounded-lg font-bold mt-2 ${canAfford && item.stock !== 0 ? 'bg-pokemon-electric text-gray-900' : 'bg-gray-600 text-gray-400'}`}>
                     {item.stock === 0 ? 'Sold Out' : `${item.price} 🪙`}
-                  </button>
+                  </div>
                 </div>
               );
             })}
@@ -199,7 +201,7 @@ export default function Shop() {
               {hatchResult.pokemon.species.spriteUrl ? (
                 <img
                   src={hatchResult.pokemon.isShiny
-                    ? hatchResult.pokemon.species.spriteUrl.replace('/sprites/pokemon/', '/sprites/pokemon/shiny/')
+                    ? hatchResult.pokemon.species.spriteShinyUrl
                     : hatchResult.pokemon.species.spriteUrl
                   }
                   alt={hatchResult.pokemon.species.name}

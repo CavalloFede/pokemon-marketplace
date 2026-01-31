@@ -51,15 +51,6 @@ resource "aws_iam_role_policy" "lambda_custom" {
       {
         Effect = "Allow"
         Action = [
-          "cognito-idp:AdminGetUser",
-          "cognito-idp:AdminCreateUser",
-          "cognito-idp:AdminUpdateUserAttributes"
-        ]
-        Resource = [var.cognito_user_pool_arn]
-      },
-      {
-        Effect = "Allow"
-        Action = [
           "xray:PutTraceSegments",
           "xray:PutTelemetryRecords"
         ]
@@ -89,12 +80,11 @@ resource "aws_lambda_function" "api" {
 
   environment {
     variables = {
-      NODE_ENV           = var.environment
-      DATABASE_URL       = "postgresql://${var.db_username}:${var.db_password}@${var.db_host}:5432/${var.db_name}"
-      REDIS_URL          = var.redis_url
-      COGNITO_USER_POOL_ID = var.cognito_user_pool_id
-      COGNITO_CLIENT_ID    = var.cognito_client_id
-      COGNITO_REGION       = data.aws_region.current.name
+      NODE_ENV     = var.environment
+      DATABASE_URL = "postgresql://${var.db_username}:${var.db_password}@${var.db_host}:5432/${var.db_name}"
+      REDIS_URL    = var.redis_url
+      # Firebase credentials should be configured via AWS Secrets Manager or environment variables:
+      # FIREBASE_PROJECT_ID and FIREBASE_SERVICE_ACCOUNT_KEY
     }
   }
 

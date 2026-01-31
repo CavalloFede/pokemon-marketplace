@@ -1,12 +1,20 @@
-import { CloudWatchClient, PutMetricDataCommand } from '@aws-sdk/client-cloudwatch';
+import type { CloudWatchClient as CloudWatchClientType, PutMetricDataCommand as PutMetricDataCommandType } from '@aws-sdk/client-cloudwatch';
 
 const NAMESPACE = 'PokemonMarketplace';
 const isProduction = process.env.NODE_ENV === 'production';
 
-// CloudWatch client (only used in production)
-const cloudwatch = isProduction
-  ? new CloudWatchClient({ region: process.env.AWS_REGION || 'us-east-1' })
-  : null;
+// CloudWatch client (only used in production, loaded dynamically)
+let cloudwatch: CloudWatchClientType | null = null;
+let PutMetricDataCommand: typeof PutMetricDataCommandType | null = null;
+
+if (isProduction) {
+  import('@aws-sdk/client-cloudwatch').then((module) => {
+    cloudwatch = new module.CloudWatchClient({ region: process.env.AWS_REGION || 'us-east-1' });
+    PutMetricDataCommand = module.PutMetricDataCommand;
+  }).catch(() => {
+    console.warn('CloudWatch SDK not available, metrics will be logged locally');
+  });
+}
 
 // In-memory metrics for local development
 const localMetrics: Record<string, number> = {};
@@ -42,7 +50,7 @@ export class MetricsService {
       ...dimensions,
     };
 
-    if (isProduction && cloudwatch) {
+    if (isProduction && cloudwatch && PutMetricDataCommand) {
       try {
         await cloudwatch.send(
           new PutMetricDataCommand({

@@ -1,11 +1,11 @@
 // Enums
-export * from './enums';
+export * from './enums.js';
 
 // Types
-export * from './types';
+export * from './types.js';
 
 // Constants
-export * from './constants';
+export * from './constants.js';
 
 // Schemas (Zod)
-export * from './schemas';
+export * from './schemas.js';

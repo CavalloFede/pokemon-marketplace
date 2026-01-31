@@ -5,11 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, isLoading, initiateLogin, error } = useAuth();
-
-  // Get error from URL params
-  const params = new URLSearchParams(location.search);
-  const urlError = params.get('error');
+  const { isAuthenticated, isLoading, login, error, clearError } = useAuth();
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -19,15 +15,18 @@ export default function Login() {
     }
   }, [isAuthenticated, isLoading, navigate, location.state]);
 
+  // Clear error on unmount
+  useEffect(() => {
+    return () => clearError();
+  }, [clearError]);
+
   const handleLogin = async () => {
     try {
-      await initiateLogin();
+      await login();
     } catch (err) {
-      console.error('Failed to initiate login:', err);
+      console.error('Failed to login:', err);
     }
   };
-
-  const displayError = error || urlError;
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -42,13 +41,9 @@ export default function Login() {
           </p>
         </div>
 
-        {displayError && (
+        {error && (
           <div className="bg-red-500/20 border border-red-500 rounded-lg p-4 mb-6 text-center">
-            <p className="text-red-400">
-              {displayError === 'auth_failed'
-                ? 'Authentication failed. Please try again.'
-                : displayError}
-            </p>
+            <p className="text-red-400">{error}</p>
           </div>
         )}
 

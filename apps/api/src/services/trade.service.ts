@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { coinService } from './coin.service.js';
+import { pokedexService } from './pokedex.service.js';
 import { TradeStatus, TRADE_EXPIRATION_HOURS } from '@pokemon-marketplace/shared';
 
 interface TradesFilters {
@@ -286,24 +287,51 @@ export class TradeService {
         );
       }
 
-      // Update pokedex for both users
-      const allPokemonIds = [...trade.initiatorPokemonIds, ...trade.receiverPokemonIds];
-      const pokemon = await tx.userPokemon.findMany({
-        where: { id: { in: allPokemonIds } },
-        select: { userId: true, speciesId: true }
+      // Get species IDs for pokedex updates (before ownership changed)
+      const initiatorPokemonSpecies = await tx.userPokemon.findMany({
+        where: { id: { in: trade.initiatorPokemonIds } },
+        select: { speciesId: true }
+      });
+      const receiverPokemonSpecies = await tx.userPokemon.findMany({
+        where: { id: { in: trade.receiverPokemonIds } },
+        select: { speciesId: true }
       });
 
-      for (const p of pokemon) {
+      const initiatorSpeciesIds = [...new Set(initiatorPokemonSpecies.map(p => p.speciesId))];
+      const receiverSpeciesIds = [...new Set(receiverPokemonSpecies.map(p => p.speciesId))];
+
+      // Update pokedex for receiver (receives initiator's pokemon)
+      for (const speciesId of initiatorSpeciesIds) {
         await tx.userPokedex.upsert({
           where: {
-            userId_speciesId: { userId: p.userId, speciesId: p.speciesId }
+            userId_speciesId: { userId: trade.receiverId, speciesId }
           },
           update: {
-            timesObtained: { increment: 1 }
+            timesObtained: { increment: 1 },
+            hasCurrently: true
           },
           create: {
-            userId: p.userId,
-            speciesId: p.speciesId
+            userId: trade.receiverId,
+            speciesId,
+            hasCurrently: true
+          }
+        });
+      }
+
+      // Update pokedex for initiator (receives receiver's pokemon)
+      for (const speciesId of receiverSpeciesIds) {
+        await tx.userPokedex.upsert({
+          where: {
+            userId_speciesId: { userId: trade.initiatorId, speciesId }
+          },
+          update: {
+            timesObtained: { increment: 1 },
+            hasCurrently: true
+          },
+          create: {
+            userId: trade.initiatorId,
+            speciesId,
+            hasCurrently: true
           }
         });
       }
@@ -318,7 +346,29 @@ export class TradeService {
       });
     });
 
+    // After transaction: update hasCurrently for species given away
+    // These are done outside the transaction to avoid deadlocks
+    const initiatorGaveSpecies = await this.getSpeciesFromPokemonIds(trade.initiatorPokemonIds);
+    const receiverGaveSpecies = await this.getSpeciesFromPokemonIds(trade.receiverPokemonIds);
+
+    // Update hasCurrently for initiator (gave away initiator's pokemon)
+    await pokedexService.updateHasCurrentlyBatch(trade.initiatorId, initiatorGaveSpecies);
+
+    // Update hasCurrently for receiver (gave away receiver's pokemon)
+    await pokedexService.updateHasCurrentlyBatch(trade.receiverId, receiverGaveSpecies);
+
     return this.getTradeById(tradeId);
+  }
+
+  /**
+   * Helper to get species IDs from pokemon IDs
+   */
+  private async getSpeciesFromPokemonIds(pokemonIds: string[]): Promise<number[]> {
+    const pokemon = await prisma.userPokemon.findMany({
+      where: { id: { in: pokemonIds } },
+      select: { speciesId: true }
+    });
+    return [...new Set(pokemon.map(p => p.speciesId))];
   }
 
   /**

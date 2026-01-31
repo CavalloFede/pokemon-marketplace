@@ -14,6 +14,8 @@ const GENERATIONS = [
   { gen: 9, name: 'Paldea', start: 906, end: 1025 },
 ];
 
+const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythical'];
+
 const RARITY_COLORS: Record<string, string> = {
   common: 'bg-gray-600',
   uncommon: 'bg-green-600',
@@ -104,13 +106,17 @@ export default function Pokedex() {
       {/* Rarity Stats */}
       {stats?.byRarity && (
         <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-          {Object.entries(stats.byRarity).map(([rarity, data]: [string, any]) => (
-            <div key={rarity} className="card p-3 text-center">
-              <div className={`w-3 h-3 rounded-full ${RARITY_COLORS[rarity]} mx-auto mb-1`} />
-              <p className="text-xs capitalize">{rarity}</p>
-              <p className="font-bold">{data.obtained}/{data.total}</p>
-            </div>
-          ))}
+          {RARITY_ORDER.map((rarity) => {
+            const data = stats.byRarity[rarity];
+            if (!data) return null;
+            return (
+              <div key={rarity} className="card p-3 text-center">
+                <div className={`w-3 h-3 rounded-full ${RARITY_COLORS[rarity]} mx-auto mb-1`} />
+                <p className="text-xs capitalize">{rarity}</p>
+                <p className="font-bold">{data.obtained}/{data.total}</p>
+              </div>
+            );
+          })}
         </div>
       )}
 

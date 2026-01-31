@@ -25,19 +25,19 @@ export class UserService {
   }
 
   /**
-   * Get user by Cognito ID
+   * Get user by Firebase UID
    */
-  async getUserByCognitoId(cognitoId: string) {
+  async getUserByFirebaseUid(firebaseUid: string) {
     return prisma.user.findUnique({
-      where: { cognitoId }
+      where: { firebaseUid }
     });
   }
 
   /**
-   * Create new user from Cognito data
+   * Create new user from Firebase data
    */
   async createUser(data: {
-    cognitoId: string;
+    firebaseUid: string;
     email: string;
     displayName: string;
     avatarUrl?: string;
@@ -46,7 +46,7 @@ export class UserService {
       // Create user with initial coins
       const newUser = await tx.user.create({
         data: {
-          cognitoId: data.cognitoId,
+          firebaseUid: data.firebaseUid,
           email: data.email,
           displayName: data.displayName,
           avatarUrl: data.avatarUrl,
@@ -70,18 +70,18 @@ export class UserService {
   }
 
   /**
-   * Get or create user from Cognito
+   * Get or create user from Firebase
    */
-  async getOrCreateUser(cognitoData: {
-    cognitoId: string;
+  async getOrCreateUser(firebaseData: {
+    firebaseUid: string;
     email: string;
     displayName: string;
     avatarUrl?: string;
   }) {
-    let user = await this.getUserByCognitoId(cognitoData.cognitoId);
+    let user = await this.getUserByFirebaseUid(firebaseData.firebaseUid);
 
     if (!user) {
-      user = await this.createUser(cognitoData);
+      user = await this.createUser(firebaseData);
     }
 
     return user;

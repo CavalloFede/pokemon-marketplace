@@ -1,3 +1,5 @@
+import { getIdToken } from './firebase';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 interface ApiError {
@@ -5,29 +7,7 @@ interface ApiError {
 }
 
 class ApiClient {
-  private accessToken: string | null = null;
-  private refreshToken: string | null = null;
   private onUnauthorized: (() => void) | null = null;
-
-  constructor() {
-    // Load tokens from localStorage on init
-    this.accessToken = localStorage.getItem('accessToken');
-    this.refreshToken = localStorage.getItem('refreshToken');
-  }
-
-  setTokens(accessToken: string, refreshToken: string) {
-    this.accessToken = accessToken;
-    this.refreshToken = refreshToken;
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-  }
-
-  clearTokens() {
-    this.accessToken = null;
-    this.refreshToken = null;
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-  }
 
   setOnUnauthorized(callback: () => void) {
     this.onUnauthorized = callback;
@@ -35,17 +15,21 @@ class ApiClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    idToken?: string
   ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true', // Skip ngrok interstitial page
       ...options.headers
     };
 
-    if (this.accessToken) {
-      (headers as Record<string, string>)['Authorization'] = `Bearer ${this.accessToken}`;
+    // Get Firebase ID token for authenticated requests
+    const token = idToken || await getIdToken();
+    if (token) {
+      (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
     }
 
     const response = await fetch(url, {
@@ -53,19 +37,8 @@ class ApiClient {
       headers
     });
 
-    // Handle 401 - try to refresh token
-    if (response.status === 401 && this.refreshToken) {
-      const refreshed = await this.tryRefreshToken();
-      if (refreshed) {
-        // Retry the request with new token
-        (headers as Record<string, string>)['Authorization'] = `Bearer ${this.accessToken}`;
-        const retryResponse = await fetch(url, { ...options, headers });
-        if (retryResponse.ok) {
-          return retryResponse.json();
-        }
-      }
-      // Refresh failed, clear tokens and notify
-      this.clearTokens();
+    // Handle 401 - unauthorized
+    if (response.status === 401) {
       this.onUnauthorized?.();
       throw new Error('Session expired');
     }
@@ -75,38 +48,17 @@ class ApiClient {
       throw new Error(error.error || `HTTP ${response.status}`);
     }
 
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error('Invalid response from server');
+    }
+
     return response.json();
   }
 
-  private async tryRefreshToken(): Promise<boolean> {
-    if (!this.refreshToken) return false;
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: this.refreshToken })
-      });
-
-      if (!response.ok) return false;
-
-      const data = await response.json();
-      this.accessToken = data.tokens.accessToken;
-      localStorage.setItem('accessToken', data.tokens.accessToken);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
   // Auth
-  async getLoginUrl(redirectUri: string) {
-    return this.request<{ loginUrl: string }>(
-      `/auth/login-url?redirectUri=${encodeURIComponent(redirectUri)}`
-    );
-  }
-
-  async handleOAuthCallback(code: string, redirectUri: string) {
+  async authenticate(idToken: string) {
     return this.request<{
       success: boolean;
       user: {
@@ -116,28 +68,22 @@ class ApiClient {
         avatarUrl: string | null;
         coins: number;
       };
-      tokens: {
-        accessToken: string;
-        idToken: string;
-        refreshToken: string;
-        expiresIn: number;
-      };
-    }>('/auth/google/callback', {
+    }>('/auth/authenticate', {
       method: 'POST',
-      body: JSON.stringify({ code, redirectUri })
+      body: JSON.stringify({ idToken })
     });
   }
 
   async logout() {
     try {
       await this.request('/auth/logout', { method: 'POST' });
-    } finally {
-      this.clearTokens();
+    } catch {
+      // Ignore logout errors
     }
   }
 
   // Users
-  async getCurrentUser() {
+  async getCurrentUser(idToken?: string) {
     return this.request<{
       id: string;
       email: string;
@@ -159,7 +105,7 @@ class ApiClient {
         currentStreak: number;
         potentialReward: number;
       };
-    }>('/users/me');
+    }>('/users/me', {}, idToken);
   }
 
   async claimDailyReward() {
@@ -169,7 +115,7 @@ class ApiClient {
       newBalance: number;
       streakDay: number;
       nextClaimAt: string;
-    }>('/users/me/daily-reward', { method: 'POST' });
+    }>('/users/me/daily-reward', { method: 'POST', body: JSON.stringify({}) });
   }
 
   // Shop
@@ -190,7 +136,7 @@ class ApiClient {
       pokemon: {
         id: string;
         speciesId: number;
-        species: { name: string; spriteUrl: string; rarity: string };
+        species: { name: string; spriteUrl: string; spriteShinyUrl: string; rarity: string };
         isShiny: boolean;
       };
       newBalance: number;
@@ -235,6 +181,15 @@ class ApiClient {
         isInTeam: boolean;
         teamPosition: number | null;
         isFavorite: boolean;
+        level: number;
+        experience: number;
+        levelInfo?: {
+          level: number;
+          experience: number;
+          expToNextLevel: number;
+          expProgress: number;
+          isMaxLevel: boolean;
+        };
       }>;
       total: number;
       page: number;
@@ -247,7 +202,7 @@ class ApiClient {
     return this.request<{
       team: Array<{
         id: string;
-        species: { name: string; spriteUrl: string };
+        species: { name: string; spriteUrl: string; spriteShinyUrl: string };
         nickname: string | null;
         isShiny: boolean;
         teamPosition: number;
@@ -348,6 +303,56 @@ class ApiClient {
   async cancelTrade(tradeId: string) {
     return this.request<{ success: boolean }>(`/trades/${tradeId}/cancel`, {
       method: 'POST'
+    });
+  }
+
+  // Evolution
+  async getEvolutionReady() {
+    return this.request<{
+      pokemon: Array<{
+        id: string;
+        nickname: string | null;
+        isShiny: boolean;
+        level: number;
+        currentSpecies: {
+          id: number;
+          name: string;
+          spriteUrl: string;
+          spriteShinyUrl: string;
+        };
+        targetSpecies: {
+          id: number;
+          name: string;
+          spriteUrl: string;
+          spriteShinyUrl: string;
+          evolutionLevel: number;
+        };
+      }>;
+    }>('/pokemon/evolution-ready');
+  }
+
+  async evolvePokemon(pokemonId: string) {
+    return this.request<{
+      success: boolean;
+      pokemon: {
+        id: string;
+        previousSpeciesId: number;
+        previousSpeciesName: string;
+        newSpeciesId: number;
+        newSpeciesName: string;
+        isShiny: boolean;
+        level: number;
+      };
+      isNewPokedexEntry: boolean;
+    }>(`/pokemon/${pokemonId}/evolve`, {
+      method: 'POST'
+    });
+  }
+
+  async suppressEvolutionNotification(pokemonId: string) {
+    return this.request<{ success: boolean }>(`/pokemon/${pokemonId}/evolution-settings`, {
+      method: 'PATCH',
+      body: JSON.stringify({ suppressNotification: true })
     });
   }
 }
