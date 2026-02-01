@@ -13,6 +13,11 @@ export const queryKeys = {
   trades: ['trades'] as const,
   trade: (id: string) => ['trades', id] as const,
   evolutionReady: ['evolution', 'ready'] as const,
+  wantListings: ['want-listings'] as const,
+  wantListing: (id: string) => ['want-listings', id] as const,
+  myWantListings: ['want-listings', 'mine'] as const,
+  counterOffers: ['counter-offers'] as const,
+  myCounterOffers: ['counter-offers', 'mine'] as const,
 };
 
 // User hooks
@@ -235,6 +240,151 @@ export function useSuppressEvolution() {
     mutationFn: (pokemonId: string) => api.suppressEvolutionNotification(pokemonId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.evolutionReady });
+    },
+  });
+}
+
+// Want Listing hooks
+export function useWantListings(params?: {
+  speciesId?: number;
+  minCoins?: number;
+  maxCoins?: number;
+  page?: number;
+}) {
+  return useQuery({
+    queryKey: [...queryKeys.wantListings, params],
+    queryFn: () => api.getWantListings(params),
+  });
+}
+
+export function useMyWantListings() {
+  return useQuery({
+    queryKey: queryKeys.myWantListings,
+    queryFn: () => api.getMyWantListings(),
+  });
+}
+
+export function useWantListing(id: string) {
+  return useQuery({
+    queryKey: queryKeys.wantListing(id),
+    queryFn: () => api.getWantListing(id),
+    enabled: !!id,
+  });
+}
+
+export function useCreateWantListing() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      wantedSpeciesId: number;
+      wantShiny?: boolean;
+      coinsOffered: number;
+      offeredPokemonIds: string[];
+      expiresInDays?: number;
+    }) => api.createWantListing(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.wantListings });
+      queryClient.invalidateQueries({ queryKey: queryKeys.myWantListings });
+    },
+  });
+}
+
+export function useCancelWantListing() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => api.cancelWantListing(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.wantListings });
+      queryClient.invalidateQueries({ queryKey: queryKeys.myWantListings });
+    },
+  });
+}
+
+export function useAcceptWantListing() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ listingId, pokemonId }: { listingId: string; pokemonId: string }) =>
+      api.acceptWantListing(listingId, pokemonId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.wantListings });
+      queryClient.invalidateQueries({ queryKey: queryKeys.myWantListings });
+      queryClient.invalidateQueries({ queryKey: queryKeys.pokemon });
+      queryClient.invalidateQueries({ queryKey: queryKeys.user });
+    },
+  });
+}
+
+export function useMatchingPokemon(listingId: string) {
+  return useQuery({
+    queryKey: ['matching-pokemon', listingId],
+    queryFn: () => api.getMatchingPokemon(listingId),
+    enabled: !!listingId,
+  });
+}
+
+// Counter Offer hooks
+export function useMyCounterOffers() {
+  return useQuery({
+    queryKey: queryKeys.myCounterOffers,
+    queryFn: () => api.getMyCounterOffers(),
+  });
+}
+
+export function useCreateCounterOffer() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      wantListingId: string;
+      offeredPokemonId: string;
+      coinsRequested: number;
+      requestedPokemonIds: string[];
+      message?: string;
+    }) => api.createCounterOffer(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.wantListings });
+      queryClient.invalidateQueries({ queryKey: queryKeys.myCounterOffers });
+    },
+  });
+}
+
+export function useAcceptCounterOffer() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => api.acceptCounterOffer(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.wantListings });
+      queryClient.invalidateQueries({ queryKey: queryKeys.myWantListings });
+      queryClient.invalidateQueries({ queryKey: queryKeys.myCounterOffers });
+      queryClient.invalidateQueries({ queryKey: queryKeys.pokemon });
+      queryClient.invalidateQueries({ queryKey: queryKeys.user });
+    },
+  });
+}
+
+export function useRejectCounterOffer() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => api.rejectCounterOffer(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.myWantListings });
+      queryClient.invalidateQueries({ queryKey: queryKeys.myCounterOffers });
+    },
+  });
+}
+
+export function useWithdrawCounterOffer() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => api.withdrawCounterOffer(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.myCounterOffers });
     },
   });
 }

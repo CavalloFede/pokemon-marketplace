@@ -355,6 +355,293 @@ class ApiClient {
       body: JSON.stringify({ suppressNotification: true })
     });
   }
+
+  // Want Listings
+  async getWantListings(params?: {
+    speciesId?: number;
+    minCoins?: number;
+    maxCoins?: number;
+    page?: number;
+    pageSize?: number;
+  }) {
+    const searchParams = new URLSearchParams();
+    if (params?.speciesId) searchParams.set('speciesId', params.speciesId.toString());
+    if (params?.minCoins) searchParams.set('minCoins', params.minCoins.toString());
+    if (params?.maxCoins) searchParams.set('maxCoins', params.maxCoins.toString());
+    if (params?.page) searchParams.set('page', params.page.toString());
+    if (params?.pageSize) searchParams.set('pageSize', params.pageSize.toString());
+
+    const query = searchParams.toString();
+    return this.request<{
+      data: Array<{
+        id: string;
+        userId: string;
+        wantedSpeciesId: number;
+        wantShiny: boolean;
+        coinsOffered: number;
+        status: string;
+        createdAt: string;
+        expiresAt: string | null;
+        wantedSpecies: {
+          id: number;
+          name: string;
+          spriteUrl: string;
+          spriteShinyUrl: string;
+        };
+        user: {
+          id: string;
+          displayName: string;
+          avatarUrl: string | null;
+        };
+        offeredPokemon: Array<{
+          id: string;
+          pokemon: {
+            id: string;
+            isShiny: boolean;
+            species: {
+              id: number;
+              name: string;
+              spriteUrl: string;
+              spriteShinyUrl: string;
+              rarity: string;
+            };
+          };
+        }>;
+        _count: { counterOffers: number };
+      }>;
+      total: number;
+      page: number;
+      pageSize: number;
+      totalPages: number;
+    }>(`/want-listings${query ? `?${query}` : ''}`);
+  }
+
+  async getMyWantListings() {
+    return this.request<Array<{
+      id: string;
+      wantedSpeciesId: number;
+      wantShiny: boolean;
+      coinsOffered: number;
+      status: string;
+      createdAt: string;
+      wantedSpecies: {
+        id: number;
+        name: string;
+        spriteUrl: string;
+        spriteShinyUrl: string;
+      };
+      offeredPokemon: Array<{
+        id: string;
+        pokemon: {
+          id: string;
+          isShiny: boolean;
+          species: {
+            id: number;
+            name: string;
+            spriteUrl: string;
+            spriteShinyUrl: string;
+          };
+        };
+      }>;
+      counterOffers: Array<{
+        id: string;
+        status: string;
+        coinsRequested: number;
+        user: {
+          id: string;
+          displayName: string;
+          avatarUrl: string | null;
+        };
+        offeredPokemon: {
+          id: string;
+          isShiny: boolean;
+          species: { name: string; spriteUrl: string };
+        };
+      }>;
+      _count: { counterOffers: number };
+    }>>('/want-listings/mine');
+  }
+
+  async getWantListing(id: string) {
+    return this.request<{
+      id: string;
+      userId: string;
+      wantedSpeciesId: number;
+      wantShiny: boolean;
+      coinsOffered: number;
+      status: string;
+      createdAt: string;
+      expiresAt: string | null;
+      wantedSpecies: {
+        id: number;
+        name: string;
+        spriteUrl: string;
+        spriteShinyUrl: string;
+      };
+      user: {
+        id: string;
+        displayName: string;
+        avatarUrl: string | null;
+      };
+      offeredPokemon: Array<{
+        id: string;
+        pokemon: {
+          id: string;
+          isShiny: boolean;
+          species: {
+            id: number;
+            name: string;
+            spriteUrl: string;
+            spriteShinyUrl: string;
+            rarity: string;
+          };
+        };
+      }>;
+      counterOffers: Array<{
+        id: string;
+        status: string;
+        coinsRequested: number;
+        message: string | null;
+        createdAt: string;
+        user: {
+          id: string;
+          displayName: string;
+          avatarUrl: string | null;
+        };
+        offeredPokemon: {
+          id: string;
+          isShiny: boolean;
+          species: { name: string; spriteUrl: string; spriteShinyUrl: string };
+        };
+        requestedPokemon: Array<{
+          id: string;
+          pokemon: {
+            id: string;
+            isShiny: boolean;
+            species: { name: string; spriteUrl: string };
+          };
+        }>;
+      }>;
+    }>(`/want-listings/${id}`);
+  }
+
+  async createWantListing(data: {
+    wantedSpeciesId: number;
+    wantShiny?: boolean;
+    coinsOffered: number;
+    offeredPokemonIds: string[];
+    expiresInDays?: number;
+  }) {
+    return this.request<{ id: string }>('/want-listings', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  async updateWantListing(id: string, data: {
+    coinsOffered?: number;
+    offeredPokemonIds?: string[];
+  }) {
+    return this.request<{ id: string }>(`/want-listings/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    });
+  }
+
+  async cancelWantListing(id: string) {
+    return this.request<{ success: boolean }>(`/want-listings/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
+  async acceptWantListing(id: string, pokemonId: string) {
+    return this.request<{
+      success: boolean;
+      coinsReceived: number;
+    }>(`/want-listings/${id}/accept`, {
+      method: 'POST',
+      body: JSON.stringify({ pokemonId })
+    });
+  }
+
+  async getMatchingPokemon(listingId: string) {
+    return this.request<Array<{
+      id: string;
+      isShiny: boolean;
+      species: {
+        id: number;
+        name: string;
+        spriteUrl: string;
+        spriteShinyUrl: string;
+      };
+    }>>(`/want-listings/${listingId}/matching-pokemon`);
+  }
+
+  // Counter Offers
+  async createCounterOffer(data: {
+    wantListingId: string;
+    offeredPokemonId: string;
+    coinsRequested: number;
+    requestedPokemonIds: string[];
+    message?: string;
+  }) {
+    return this.request<{ id: string }>('/counter-offers', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+
+  async getMyCounterOffers() {
+    return this.request<Array<{
+      id: string;
+      status: string;
+      coinsRequested: number;
+      message: string | null;
+      createdAt: string;
+      offeredPokemon: {
+        id: string;
+        isShiny: boolean;
+        species: { name: string; spriteUrl: string };
+      };
+      requestedPokemon: Array<{
+        id: string;
+        pokemon: {
+          id: string;
+          species: { name: string; spriteUrl: string };
+        };
+      }>;
+      wantListing: {
+        id: string;
+        status: string;
+        wantedSpecies: { name: string; spriteUrl: string };
+        user: {
+          id: string;
+          displayName: string;
+          avatarUrl: string | null;
+        };
+      };
+    }>>('/counter-offers/mine');
+  }
+
+  async acceptCounterOffer(id: string) {
+    return this.request<{ success: boolean }>(`/counter-offers/${id}/accept`, {
+      method: 'POST',
+      body: JSON.stringify({})
+    });
+  }
+
+  async rejectCounterOffer(id: string) {
+    return this.request<{ success: boolean }>(`/counter-offers/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({})
+    });
+  }
+
+  async withdrawCounterOffer(id: string) {
+    return this.request<{ success: boolean }>(`/counter-offers/${id}`, {
+      method: 'DELETE'
+    });
+  }
 }
 
 export const api = new ApiClient();

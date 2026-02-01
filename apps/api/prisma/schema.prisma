@@ -57,6 +57,21 @@ enum CoinTransactionType {
   trade_received
   initial_bonus
   event
+  want_listing_accepted
+}
+
+enum WantListingStatus {
+  open
+  completed
+  cancelled
+  expired
+}
+
+enum CounterOfferStatus {
+  pending
+  accepted
+  rejected
+  withdrawn
 }
 
 // ============================================
@@ -81,6 +96,8 @@ model User {
   coinTransactions  CoinTransaction[]
   initiatedTrades   Trade[]           @relation("TradeInitiator")
   receivedTrades    Trade[]           @relation("TradeReceiver")
+  wantListings      WantListing[]
+  counterOffers     CounterOffer[]
 
   @@map("users")
 }
@@ -109,6 +126,7 @@ model PokemonSpecies {
   shopItems      ShopItem[]
   evolvesFrom    PokemonSpecies?  @relation("EvolutionChain", fields: [evolvesFromId], references: [id])
   evolvesTo      PokemonSpecies[] @relation("EvolutionChain")
+  wantListings   WantListing[]    @relation("WantedSpecies")
 
   @@map("pokemon_species")
 }
@@ -136,6 +154,11 @@ model UserPokemon {
   // Relations
   user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   species PokemonSpecies @relation(fields: [speciesId], references: [id])
+
+  // Trading relations
+  wantListingOffers    WantListingPokemon[]
+  counterOffersAsOffer CounterOffer[]                   @relation("CounterOfferPokemon")
+  counterOfferRequests CounterOfferRequestedPokemon[]
 
   @@unique([userId, teamPosition])
   @@index([userId])
@@ -211,4 +234,98 @@ model CoinTransaction {
 
   @@index([userId, createdAt])
   @@map("coin_transactions")
+}
+
+// ============================================
+// Want Listings (Trading System)
+// ============================================
+
+model WantListing {
+  id              String            @id @default(uuid())
+  userId          String            @map("user_id")
+
+  // What the user wants
+  wantedSpeciesId Int               @map("wanted_species_id")
+  wantShiny       Boolean           @default(false) @map("want_shiny")
+
+  // Initial offer
+  coinsOffered    Int               @default(0) @map("coins_offered")
+
+  // Status
+  status          WantListingStatus @default(open)
+
+  // Timestamps
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  expiresAt       DateTime?         @map("expires_at")
+
+  // Relations
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wantedSpecies   PokemonSpecies    @relation("WantedSpecies", fields: [wantedSpeciesId], references: [id])
+  offeredPokemon  WantListingPokemon[]
+  counterOffers   CounterOffer[]
+
+  @@index([userId])
+  @@index([wantedSpeciesId])
+  @@index([status])
+  @@map("want_listings")
+}
+
+model WantListingPokemon {
+  id            String      @id @default(uuid())
+  wantListingId String      @map("want_listing_id")
+  pokemonId     String      @map("pokemon_id")
+
+  // Relations
+  wantListing   WantListing @relation(fields: [wantListingId], references: [id], onDelete: Cascade)
+  pokemon       UserPokemon @relation(fields: [pokemonId], references: [id])
+
+  @@unique([wantListingId, pokemonId])
+  @@map("want_listing_pokemon")
+}
+
+model CounterOffer {
+  id               String             @id @default(uuid())
+  wantListingId    String             @map("want_listing_id")
+  userId           String             @map("user_id")
+
+  // What they're offering (the wanted Pokemon)
+  offeredPokemonId String             @map("offered_pokemon_id")
+
+  // What they want in return
+  coinsRequested   Int                @default(0) @map("coins_requested")
+
+  // Message
+  message          String?
+
+  // Status
+  status           CounterOfferStatus @default(pending)
+
+  // Timestamps
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  // Relations
+  wantListing      WantListing        @relation(fields: [wantListingId], references: [id], onDelete: Cascade)
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  offeredPokemon   UserPokemon        @relation("CounterOfferPokemon", fields: [offeredPokemonId], references: [id])
+  requestedPokemon CounterOfferRequestedPokemon[]
+
+  @@index([wantListingId])
+  @@index([userId])
+  @@index([status])
+  @@map("counter_offers")
+}
+
+model CounterOfferRequestedPokemon {
+  id             String       @id @default(uuid())
+  counterOfferId String       @map("counter_offer_id")
+  pokemonId      String       @map("pokemon_id")
+
+  // Relations
+  counterOffer   CounterOffer @relation(fields: [counterOfferId], references: [id], onDelete: Cascade)
+  pokemon        UserPokemon  @relation(fields: [pokemonId], references: [id])
+
+  @@unique([counterOfferId, pokemonId])
+  @@map("counter_offer_requested_pokemon")
 }

@@ -12,6 +12,8 @@ const Pokedex = lazy(() => import('./pages/Pokedex'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Trades = lazy(() => import('./pages/Trades'));
 const Evolution = lazy(() => import('./pages/Evolution'));
+const WantListings = lazy(() => import('./pages/WantListings'));
+const MyWantListings = lazy(() => import('./pages/MyWantListings'));
 const Login = lazy(() => import('./pages/Login'));
 
 function LoadingSpinner() {
@@ -52,6 +54,8 @@ function App() {
           <Route path="profile" element={<Profile />} />
           <Route path="trades" element={<Trades />} />
           <Route path="evolution" element={<Evolution />} />
+          <Route path="want-listings" element={<WantListings />} />
+          <Route path="my-listings" element={<MyWantListings />} />
         </Route>
       </Routes>
     </Suspense>

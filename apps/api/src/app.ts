@@ -18,6 +18,8 @@ import { pokemonRoutes } from './routes/pokemon.js';
 import { shopRoutes } from './routes/shop.js';
 import { tradeRoutes } from './routes/trades.js';
 import { pokedexRoutes } from './routes/pokedex.js';
+import { wantListingsRoutes } from './routes/want-listings.js';
+import { counterOffersRoutes } from './routes/counter-offers.js';
 import metricsRoutes, { trackRequest } from './routes/metrics.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
@@ -63,6 +65,10 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(healthRoutes, { prefix: '/health' });
   await app.register(authRoutes, { prefix: '/auth' });
   await app.register(metricsRoutes);
+
+  // Routes with mixed auth (handle auth internally)
+  await app.register(wantListingsRoutes, { prefix: '/want-listings' });
+  await app.register(counterOffersRoutes, { prefix: '/counter-offers' });
 
   // Protected routes (auth required)
   await app.register(async (protectedApp) => {
