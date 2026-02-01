@@ -1,52 +1,82 @@
 import Redis from 'ioredis';
 import type { Redis as RedisType } from 'ioredis';
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const REDIS_URL = process.env.REDIS_URL;
+const REDIS_ENABLED = !!REDIS_URL;
 
-// @ts-expect-error - ioredis default export typing issue with ESM
-export const redis: RedisType = new Redis(REDIS_URL, {
-  maxRetriesPerRequest: 3,
-  retryStrategy(times: number) {
-    const delay = Math.min(times * 50, 2000);
-    return delay;
-  },
-  lazyConnect: true
-});
+let redis: RedisType | null = null;
 
-redis.on('error', (error: Error) => {
-  console.error('Redis connection error:', error);
-});
+if (REDIS_ENABLED) {
+  // @ts-expect-error - ioredis default export typing issue with ESM
+  redis = new Redis(REDIS_URL, {
+    maxRetriesPerRequest: 3,
+    retryStrategy(times: number) {
+      const delay = Math.min(times * 50, 2000);
+      return delay;
+    },
+    lazyConnect: true
+  });
 
-redis.on('connect', () => {
-  console.log('Redis connected');
-});
+  redis.on('error', (error: Error) => {
+    console.error('Redis connection error:', error);
+  });
+
+  redis.on('connect', () => {
+    console.log('Redis connected');
+  });
+} else {
+  console.log('Redis not configured - caching disabled');
+}
+
+export { redis };
 
 /**
  * Cache helper with JSON serialization
+ * Gracefully degrades to no-op when Redis is not available
  */
 export const cache = {
   async get<T>(key: string): Promise<T | null> {
-    const value = await redis.get(key);
-    if (!value) return null;
-    return JSON.parse(value) as T;
+    if (!redis) return null;
+    try {
+      const value = await redis.get(key);
+      if (!value) return null;
+      return JSON.parse(value) as T;
+    } catch {
+      return null;
+    }
   },
 
   async set(key: string, value: unknown, ttlSeconds?: number): Promise<void> {
-    const serialized = JSON.stringify(value);
-    if (ttlSeconds) {
-      await redis.setex(key, ttlSeconds, serialized);
-    } else {
-      await redis.set(key, serialized);
+    if (!redis) return;
+    try {
+      const serialized = JSON.stringify(value);
+      if (ttlSeconds) {
+        await redis.setex(key, ttlSeconds, serialized);
+      } else {
+        await redis.set(key, serialized);
+      }
+    } catch {
+      // Ignore cache errors
     }
   },
 
   async del(key: string): Promise<void> {
-    await redis.del(key);
+    if (!redis) return;
+    try {
+      await redis.del(key);
+    } catch {
+      // Ignore cache errors
+    }
   },
 
   async exists(key: string): Promise<boolean> {
-    const result = await redis.exists(key);
-    return result === 1;
+    if (!redis) return false;
+    try {
+      const result = await redis.exists(key);
+      return result === 1;
+    } catch {
+      return false;
+    }
   }
 };
 
