@@ -13,6 +13,7 @@ const Profile = lazy(() => import('./pages/Profile'));
 const Trades = lazy(() => import('./pages/Trades'));
 const Evolution = lazy(() => import('./pages/Evolution'));
 const WantListings = lazy(() => import('./pages/WantListings'));
+const WantListingDetail = lazy(() => import('./pages/WantListingDetail'));
 const MyWantListings = lazy(() => import('./pages/MyWantListings'));
 const Login = lazy(() => import('./pages/Login'));
 
@@ -55,6 +56,7 @@ function App() {
           <Route path="trades" element={<Trades />} />
           <Route path="evolution" element={<Evolution />} />
           <Route path="want-listings" element={<WantListings />} />
+          <Route path="want-listings/:id" element={<WantListingDetail />} />
           <Route path="my-listings" element={<MyWantListings />} />
         </Route>
       </Routes>
