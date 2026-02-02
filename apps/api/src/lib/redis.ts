@@ -6,7 +6,7 @@ const REDIS_ENABLED = !!REDIS_URL;
 
 let redis: RedisType | null = null;
 
-if (REDIS_ENABLED) {
+if (REDIS_ENABLED && REDIS_URL) {
   // @ts-expect-error - ioredis default export typing issue with ESM
   redis = new Redis(REDIS_URL, {
     maxRetriesPerRequest: 3,
@@ -17,11 +17,11 @@ if (REDIS_ENABLED) {
     lazyConnect: true
   });
 
-  redis.on('error', (error: Error) => {
+  redis!.on('error', (error: Error) => {
     console.error('Redis connection error:', error);
   });
 
-  redis.on('connect', () => {
+  redis!.on('connect', () => {
     console.log('Redis connected');
   });
 } else {
