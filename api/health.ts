@@ -1,30 +1,37 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createHandler } from '../apps/api/src/utils/handler.js';
 import { prisma } from '../apps/api/src/lib/prisma.js';
 
-export default createHandler({
-  GET: async (_req: VercelRequest, res: VercelResponse) => {
-    const checks = {
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      services: {
-        database: 'unknown',
-        cache: 'disabled'
-      }
-    };
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-    // Check database
-    try {
-      await prisma.$queryRaw`SELECT 1`;
-      checks.services.database = 'healthy';
-    } catch {
-      checks.services.database = 'unhealthy';
-      checks.status = 'degraded';
-    }
-
-    // Redis removed - cache always disabled in serverless
-
-    const statusCode = checks.status === 'ok' ? 200 : 503;
-    return res.status(statusCode).json(checks);
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
-});
+
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const checks = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    services: {
+      database: 'unknown',
+      cache: 'disabled'
+    }
+  };
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    checks.services.database = 'healthy';
+  } catch {
+    checks.services.database = 'unhealthy';
+    checks.status = 'degraded';
+  }
+
+  const statusCode = checks.status === 'ok' ? 200 : 503;
+  return res.status(statusCode).json(checks);
+}
