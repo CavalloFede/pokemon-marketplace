@@ -1,12 +1,13 @@
 {
-  "buildCommand": "pnpm build",
+  "buildCommand": "pnpm --filter api db:generate && pnpm build",
   "installCommand": "pnpm install",
   "outputDirectory": "apps/web/dist",
   "framework": "vite",
   "functions": {
     "api/**/*.ts": {
       "memory": 1024,
-      "maxDuration": 30
+      "maxDuration": 30,
+      "includeFiles": "apps/api/node_modules/.prisma/**,node_modules/.prisma/**"
     }
   },
   "rewrites": [
