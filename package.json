@@ -20,6 +20,10 @@
     "start:local": "bash scripts/start-local.sh",
     "start:docker": "bash scripts/start-docker.sh"
   },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "prisma": "^5.22.0"
+  },
   "devDependencies": {
     "@vercel/node": "^3.0.0",
     "@eslint/js": "^9.0.0",
