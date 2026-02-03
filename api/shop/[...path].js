@@ -1,5 +1,18 @@
-import { requireAuth, AuthError } from '../../apps/api/dist/src/utils/auth.js';
-import { shopService } from '../../apps/api/dist/src/services/shop.service.js';
+import { PrismaClient } from '@prisma/client';
+
+const globalForPrisma = globalThis;
+const prisma = globalForPrisma.prisma ?? new PrismaClient({ log: ['error'] });
+globalForPrisma.prisma = prisma;
+
+// Simple shop items query
+async function getShopItems() {
+  const items = await prisma.shopItem.findMany({
+    where: { isActive: true },
+    include: { species: true },
+    orderBy: [{ itemType: 'asc' }, { price: 'asc' }]
+  });
+  return items;
+}
 
 export default async function handler(req, res) {
   // CORS
@@ -17,43 +30,18 @@ export default async function handler(req, res) {
   try {
     // GET /api/shop/items (public)
     if (path === 'items' && req.method === 'GET') {
-      const items = await shopService.getShopItems();
+      const items = await getShopItems();
       return res.status(200).json(items);
     }
 
-    // POST /api/shop/purchase (requires auth)
+    // POST /api/shop/purchase - temporarily disabled, needs full service implementation
     if (path === 'purchase' && req.method === 'POST') {
-      const auth = await requireAuth(req);
-      const { itemId } = req.body || {};
-      if (!itemId) {
-        return res.status(400).json({ error: 'itemId is required' });
-      }
-      const result = await shopService.purchaseItem(auth.userId, itemId);
-      return res.status(200).json({
-        success: true,
-        pokemon: result.pokemon,
-        newBalance: result.newBalance,
-        isNewPokedexEntry: result.isNewPokedexEntry,
-        isShiny: result.isShiny,
-        rolledRarity: result.rolledRarity
-      });
+      return res.status(501).json({ error: 'Purchase endpoint is being migrated' });
     }
 
     return res.status(404).json({ error: 'Not found' });
   } catch (error) {
     console.error('Shop error:', error);
-    if (error instanceof AuthError) {
-      return res.status(error.statusCode).json({ error: error.message });
-    }
-    if (error instanceof Error) {
-      if (error.message === 'Insufficient coins') {
-        return res.status(400).json({ error: error.message });
-      }
-      if (error.message === 'Item not available') {
-        return res.status(404).json({ error: error.message });
-      }
-      return res.status(400).json({ error: error.message });
-    }
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
