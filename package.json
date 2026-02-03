@@ -5,7 +5,8 @@
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "dev": "turbo dev",
-    "build": "turbo build",
+    "build": "pnpm --filter api db:generate && turbo build",
+    "postinstall": "pnpm --filter api db:generate || true",
     "lint": "turbo lint",
     "type-check": "turbo type-check",
     "test": "turbo test",
