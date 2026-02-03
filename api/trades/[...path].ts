@@ -1,7 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { requireAuth, AuthError } from '../../apps/api/src/utils/auth.js';
 import { tradeService } from '../../apps/api/src/services/trade.service.js';
-import { TradeStatus } from '@pokemon-marketplace/shared';
+
+// Inline TradeStatus type to avoid workspace package import issues in serverless
+type TradeStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'expired';
 
 function parseQueryParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
