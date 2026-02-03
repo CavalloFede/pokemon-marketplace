@@ -1,7 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { prisma } from '../apps/api/src/lib/prisma.js';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req, res) {
   // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -27,7 +26,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     await prisma.$queryRaw`SELECT 1`;
     checks.services.database = 'healthy';
-  } catch {
+  } catch (error) {
+    console.error('Database check failed:', error);
     checks.services.database = 'unhealthy';
     checks.status = 'degraded';
   }
