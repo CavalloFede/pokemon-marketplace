@@ -1,5 +1,5 @@
 import { beforeAll, afterAll, beforeEach } from 'vitest';
-import { PrismaClient } from '../../generated/prisma';
+import { PrismaClient } from '@prisma/client';
 
 // Use test database
 process.env.NODE_ENV = 'test';
