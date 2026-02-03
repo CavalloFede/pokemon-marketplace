@@ -27,6 +27,8 @@ export default async function handler(req, res) {
   const pathParts = Array.isArray(req.query.path) ? req.query.path : [req.query.path || ''];
   const path = pathParts.join('/');
 
+  console.log('Shop endpoint - pathParts:', pathParts, 'path:', path, 'method:', req.method);
+
   try {
     // GET /api/shop/items (public)
     if (path === 'items' && req.method === 'GET') {
@@ -39,7 +41,7 @@ export default async function handler(req, res) {
       return res.status(501).json({ error: 'Purchase endpoint is being migrated' });
     }
 
-    return res.status(404).json({ error: 'Not found' });
+    return res.status(404).json({ error: 'Not found', debug: { path, pathParts, method: req.method } });
   } catch (error) {
     console.error('Shop error:', error);
     return res.status(500).json({ error: 'Internal server error' });
