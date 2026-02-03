@@ -2,7 +2,7 @@
   "name": "pokemon-marketplace",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@9.0.0",
+  "packageManager": "pnpm@10.28.2",
   "scripts": {
     "dev": "turbo dev",
     "build": "pnpm --filter api db:generate && turbo build",
