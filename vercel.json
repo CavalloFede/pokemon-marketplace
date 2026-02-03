@@ -4,10 +4,10 @@
   "outputDirectory": "apps/web/dist",
   "framework": "vite",
   "functions": {
-    "api/**/*.ts": {
+    "api/**/*.js": {
       "memory": 1024,
       "maxDuration": 30,
-      "includeFiles": "apps/api/node_modules/.prisma/**,node_modules/.prisma/**"
+      "includeFiles": "apps/api/dist/**,node_modules/.prisma/**"
     }
   },
   "rewrites": [

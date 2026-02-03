@@ -1,8 +1,7 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { requireAuth, AuthError } from '../../apps/api/src/utils/auth.js';
-import { shopService } from '../../apps/api/src/services/shop.service.js';
+import { requireAuth, AuthError } from '../../apps/api/dist/src/utils/auth.js';
+import { shopService } from '../../apps/api/dist/src/services/shop.service.js';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req, res) {
   // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
