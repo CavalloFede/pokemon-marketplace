@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma.js';
-import { WantListingStatus, CounterOfferStatus, ObtainedMethod, CoinTransactionType } from '@prisma/client';
+import { WantListingStatus, CounterOfferStatus, ObtainedMethod, CoinTransactionType } from '../../generated/prisma/index.js';
 
 interface CreateListingData {
   wantedSpeciesId: number;

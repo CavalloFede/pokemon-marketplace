@@ -47,6 +47,7 @@ terraform/.terraform.lock.hcl
 # Prisma
 apps/api/prisma/*.db
 apps/api/prisma/*.db-journal
+apps/generated/
 
 # Misc
 *.tsbuildinfo

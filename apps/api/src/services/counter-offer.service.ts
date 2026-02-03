@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma.js';
-import { ObtainedMethod, CoinTransactionType } from '@prisma/client';
+import { ObtainedMethod, CoinTransactionType } from '../../generated/prisma/index.js';
 
 interface CreateCounterOfferData {
   wantListingId: string;
