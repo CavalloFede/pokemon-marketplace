@@ -110,14 +110,23 @@ async function hatchEgg(category) {
   };
 }
 
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+// Handler for GET /api/shop/items
+async function handleGetItems(req, res) {
+  try {
+    const items = await prisma.shopItem.findMany({
+      where: { isActive: true },
+      include: { species: true },
+      orderBy: [{ itemType: 'asc' }, { price: 'asc' }]
+    });
+    return res.status(200).json(items);
+  } catch (error) {
+    console.error('Shop items error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
+// Handler for POST /api/shop/purchase
+async function handlePostPurchase(req, res) {
   try {
     const auth = await requireAuth(req);
 
@@ -265,4 +274,39 @@ export default async function handler(req, res) {
     }
     return res.status(500).json({ error: error.message || 'Internal server error' });
   }
+}
+
+export default async function handler(req, res) {
+  // CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  // Route based on path segments
+  const path = req.query.path;
+
+  // Root path (no segments) or items endpoint
+  if (!path || (Array.isArray(path) && path.length === 1 && path[0] === 'items')) {
+    if (req.method === 'GET') {
+      return handleGetItems(req, res);
+    } else {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+  }
+
+  // Purchase endpoint
+  if (Array.isArray(path) && path.length === 1 && path[0] === 'purchase') {
+    if (req.method === 'POST') {
+      return handlePostPurchase(req, res);
+    } else {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+  }
+
+  // Unknown route
+  return res.status(404).json({ error: 'Not found' });
 }

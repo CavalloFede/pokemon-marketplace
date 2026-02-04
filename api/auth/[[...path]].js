@@ -21,6 +21,21 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Get path from query parameter (array of path segments)
+  const path = req.query.path || [];
+  const endpoint = path[0];
+
+  // Route based on path
+  if (endpoint === 'authenticate') {
+    return handleAuthenticate(req, res);
+  } else if (endpoint === 'logout') {
+    return handleLogout(req, res);
+  } else {
+    return res.status(404).json({ error: 'Endpoint not found' });
+  }
+}
+
+async function handleAuthenticate(req, res) {
   try {
     const { idToken } = req.body || {};
     if (!idToken) {
@@ -78,4 +93,9 @@ export default async function handler(req, res) {
     console.error('Auth error:', error);
     return res.status(401).json({ error: error.message || 'Authentication failed' });
   }
+}
+
+async function handleLogout(req, res) {
+  // Firebase token revocation happens client-side
+  return res.status(200).json({ success: true });
 }
