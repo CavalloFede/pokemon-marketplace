@@ -11,6 +11,22 @@
     }
   },
   "rewrites": [
+    { "source": "/api/pokemon", "destination": "/api/pokemon/__root" },
+    { "source": "/api/pokemon/:id/sell", "destination": "/api/pokemon/:id?action=sell" },
+    { "source": "/api/pokemon/:id/evolve", "destination": "/api/pokemon/:id?action=evolve" },
+    { "source": "/api/pokemon/:id/evolution-settings", "destination": "/api/pokemon/:id?action=evolution-settings" },
+    { "source": "/api/pokedex", "destination": "/api/pokedex/__root" },
+    { "source": "/api/users/me/daily-reward", "destination": "/api/users/me?action=daily-reward" },
+    { "source": "/api/trades", "destination": "/api/trades/__root" },
+    { "source": "/api/trades/:id/accept", "destination": "/api/trades/:id?action=accept" },
+    { "source": "/api/trades/:id/reject", "destination": "/api/trades/:id?action=reject" },
+    { "source": "/api/trades/:id/cancel", "destination": "/api/trades/:id?action=cancel" },
+    { "source": "/api/want-listings", "destination": "/api/want-listings/__root" },
+    { "source": "/api/want-listings/:id/accept", "destination": "/api/want-listings/:id?action=accept" },
+    { "source": "/api/want-listings/:id/matching-pokemon", "destination": "/api/want-listings/:id?action=matching-pokemon" },
+    { "source": "/api/counter-offers", "destination": "/api/counter-offers/__root" },
+    { "source": "/api/counter-offers/:id/accept", "destination": "/api/counter-offers/:id?action=accept" },
+    { "source": "/api/counter-offers/:id/reject", "destination": "/api/counter-offers/:id?action=reject" },
     { "source": "/((?!api).*)", "destination": "/index.html" }
   ]
 }

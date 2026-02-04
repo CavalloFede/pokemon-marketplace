@@ -287,10 +287,11 @@ export default async function handler(req, res) {
   }
 
   // Route based on path segments
-  const path = req.query.path;
+  const qp = req.query['...path'];
+  const pathParts = Array.isArray(qp) ? qp : qp ? [qp] : [];
 
-  // Root path (no segments) or items endpoint
-  if (!path || (Array.isArray(path) && path.length === 1 && path[0] === 'items')) {
+  // Items endpoint
+  if (pathParts.length === 0 || (pathParts.length === 1 && pathParts[0] === 'items')) {
     if (req.method === 'GET') {
       return handleGetItems(req, res);
     } else {
@@ -299,7 +300,7 @@ export default async function handler(req, res) {
   }
 
   // Purchase endpoint
-  if (Array.isArray(path) && path.length === 1 && path[0] === 'purchase') {
+  if (pathParts.length === 1 && pathParts[0] === 'purchase') {
     if (req.method === 'POST') {
       return handlePostPurchase(req, res);
     } else {

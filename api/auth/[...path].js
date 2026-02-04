@@ -21,9 +21,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Get path from query parameter (array of path segments)
-  const path = req.query.path || [];
-  const endpoint = path[0];
+  const rawPath = req.query['...path'];
+  const pathSegments = Array.isArray(rawPath) ? rawPath : rawPath ? [rawPath] : [];
+  const endpoint = pathSegments[0];
 
   // Route based on path
   if (endpoint === 'authenticate') {

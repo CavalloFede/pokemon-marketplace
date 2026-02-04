@@ -246,7 +246,9 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const pathParts = req.query.path || [];
+  const qp = req.query['...path'];
+  const rawPath = Array.isArray(qp) ? qp : qp ? [qp] : [];
+  const pathParts = rawPath[0] === '__root' ? [] : rawPath;
 
   try {
     const auth = await requireAuth(req);
@@ -265,27 +267,26 @@ export default async function handler(req, res) {
     }
 
     // Routes with listing ID
-    if (pathParts.length >= 1) {
+    if (pathParts.length === 1 && pathParts[0] !== 'mine') {
       const listingId = pathParts[0];
+      const action = req.query.action;
 
-      // GET/PATCH/DELETE /api/want-listings/:id
-      if (pathParts.length === 1) {
-        if (req.method === 'GET') return handleGetListing(req, res, listingId);
-        if (req.method === 'PATCH') return handleUpdateListing(req, res, auth, listingId);
-        if (req.method === 'DELETE') return handleDeleteListing(req, res, auth, listingId);
-        return res.status(405).json({ error: 'Method not allowed' });
-      }
-
-      // POST /api/want-listings/:id/accept
-      if (pathParts[1] === 'accept' && pathParts.length === 2) {
+      if (action === 'accept') {
         if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
         return handleAcceptListing(req, res, auth, listingId);
       }
 
-      // GET /api/want-listings/:id/matching-pokemon
-      if (pathParts[1] === 'matching-pokemon' && pathParts.length === 2) {
+      if (action === 'matching-pokemon') {
         if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
         return handleMatchingPokemon(req, res, auth, listingId);
+      }
+
+      // GET/PATCH/DELETE /api/want-listings/:id (no action)
+      if (!action) {
+        if (req.method === 'GET') return handleGetListing(req, res, listingId);
+        if (req.method === 'PATCH') return handleUpdateListing(req, res, auth, listingId);
+        if (req.method === 'DELETE') return handleDeleteListing(req, res, auth, listingId);
+        return res.status(405).json({ error: 'Method not allowed' });
       }
     }
 

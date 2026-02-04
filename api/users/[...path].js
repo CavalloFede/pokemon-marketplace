@@ -235,23 +235,26 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const pathParts = req.query.path || [];
+  const qp = req.query['...path'];
+  const pathParts = Array.isArray(qp) ? qp : qp ? [qp] : [];
   const route = pathParts.join('/');
 
   try {
-    // GET/PATCH /api/users/me
-    if (route === 'me') {
+    // /api/users/me routes
+    if (pathParts[0] === 'me') {
       const auth = await requireAuth(req);
+      const action = req.query.action;
+
+      // GET/POST /api/users/me/daily-reward (rewritten with action=daily-reward)
+      if (action === 'daily-reward') {
+        if (req.method === 'GET') return handleDailyRewardGet(req, res, auth);
+        if (req.method === 'POST') return handleDailyRewardPost(req, res, auth);
+        return res.status(405).json({ error: 'Method not allowed' });
+      }
+
+      // GET/PATCH /api/users/me
       if (req.method === 'GET') return handleGetMe(req, res, auth);
       if (req.method === 'PATCH') return handlePatchMe(req, res, auth);
-      return res.status(405).json({ error: 'Method not allowed' });
-    }
-
-    // GET/POST /api/users/me/daily-reward
-    if (route === 'me/daily-reward') {
-      const auth = await requireAuth(req);
-      if (req.method === 'GET') return handleDailyRewardGet(req, res, auth);
-      if (req.method === 'POST') return handleDailyRewardPost(req, res, auth);
       return res.status(405).json({ error: 'Method not allowed' });
     }
 

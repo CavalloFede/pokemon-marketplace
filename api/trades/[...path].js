@@ -225,7 +225,9 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const pathParts = req.query.path || [];
+  const qp = req.query['...path'];
+  const rawPath = Array.isArray(qp) ? qp : qp ? [qp] : [];
+  const pathParts = rawPath[0] === '__root' ? [] : rawPath;
 
   try {
     const auth = await requireAuth(req);
@@ -238,25 +240,27 @@ export default async function handler(req, res) {
     }
 
     // Routes with trade ID
-    if (pathParts.length >= 1) {
+    if (pathParts.length === 1) {
       const tradeId = pathParts[0];
+      const action = req.query.action;
 
-      if (pathParts.length === 1) {
-        if (req.method === 'GET') return handleGetTrade(req, res, auth, tradeId);
-        return res.status(405).json({ error: 'Method not allowed' });
-      }
-
-      if (pathParts[1] === 'accept' && pathParts.length === 2) {
+      if (action === 'accept') {
         if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
         return handleAcceptTrade(req, res, auth, tradeId);
       }
-      if (pathParts[1] === 'reject' && pathParts.length === 2) {
+      if (action === 'reject') {
         if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
         return handleRejectTrade(req, res, auth, tradeId);
       }
-      if (pathParts[1] === 'cancel' && pathParts.length === 2) {
+      if (action === 'cancel') {
         if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
         return handleCancelTrade(req, res, auth, tradeId);
+      }
+
+      // GET /api/trades/:id (no action)
+      if (!action) {
+        if (req.method === 'GET') return handleGetTrade(req, res, auth, tradeId);
+        return res.status(405).json({ error: 'Method not allowed' });
       }
     }
 

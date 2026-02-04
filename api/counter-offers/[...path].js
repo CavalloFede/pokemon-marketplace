@@ -173,7 +173,9 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const pathParts = req.query.path || [];
+  const qp = req.query['...path'];
+  const rawPath = Array.isArray(qp) ? qp : qp ? [qp] : [];
+  const pathParts = rawPath[0] === '__root' ? [] : rawPath;
 
   try {
     const auth = await requireAuth(req);
@@ -191,23 +193,25 @@ export default async function handler(req, res) {
     }
 
     // Routes with counter-offer ID
-    if (pathParts.length >= 1) {
+    if (pathParts.length === 1 && pathParts[0] !== 'mine') {
       const counterOfferId = pathParts[0];
+      const action = req.query.action;
 
-      if (pathParts.length === 1) {
-        if (req.method === 'GET') return handleGetCounterOffer(req, res, counterOfferId);
-        if (req.method === 'DELETE') return handleWithdrawCounterOffer(req, res, auth, counterOfferId);
-        return res.status(405).json({ error: 'Method not allowed' });
-      }
-
-      if (pathParts[1] === 'accept' && pathParts.length === 2) {
+      if (action === 'accept') {
         if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
         return handleAcceptCounterOffer(req, res, auth, counterOfferId);
       }
 
-      if (pathParts[1] === 'reject' && pathParts.length === 2) {
+      if (action === 'reject') {
         if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
         return handleRejectCounterOffer(req, res, auth, counterOfferId);
+      }
+
+      // GET/DELETE /api/counter-offers/:id (no action)
+      if (!action) {
+        if (req.method === 'GET') return handleGetCounterOffer(req, res, counterOfferId);
+        if (req.method === 'DELETE') return handleWithdrawCounterOffer(req, res, auth, counterOfferId);
+        return res.status(405).json({ error: 'Method not allowed' });
       }
     }
 

@@ -385,7 +385,9 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const pathParts = req.query.path || [];
+  const qp = req.query['...path'];
+  const rawPath = Array.isArray(qp) ? qp : qp ? [qp] : [];
+  const pathParts = rawPath[0] === '__root' ? [] : rawPath;
 
   try {
     const auth = await requireAuth(req);
@@ -407,28 +409,16 @@ export default async function handler(req, res) {
     }
 
     // Routes with pokemon ID
-    if (pathParts.length >= 1) {
+    if (pathParts.length === 1) {
       const pokemonId = pathParts[0];
+      const action = req.query.action;
 
-      // GET/PATCH /api/pokemon/:id
-      if (pathParts.length === 1) {
-        return handlePokemonById(req, res, auth, pokemonId);
-      }
+      if (action === 'sell') return handleSell(req, res, auth, pokemonId);
+      if (action === 'evolve') return handleEvolve(req, res, auth, pokemonId);
+      if (action === 'evolution-settings') return handleEvolutionSettings(req, res, auth, pokemonId);
 
-      // GET/POST /api/pokemon/:id/sell
-      if (pathParts[1] === 'sell' && pathParts.length === 2) {
-        return handleSell(req, res, auth, pokemonId);
-      }
-
-      // POST /api/pokemon/:id/evolve
-      if (pathParts[1] === 'evolve' && pathParts.length === 2) {
-        return handleEvolve(req, res, auth, pokemonId);
-      }
-
-      // PATCH /api/pokemon/:id/evolution-settings
-      if (pathParts[1] === 'evolution-settings' && pathParts.length === 2) {
-        return handleEvolutionSettings(req, res, auth, pokemonId);
-      }
+      // GET/PATCH /api/pokemon/:id (no action)
+      if (!action) return handlePokemonById(req, res, auth, pokemonId);
     }
 
     return res.status(404).json({ error: 'Not found' });

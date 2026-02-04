@@ -176,7 +176,9 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  const pathParts = req.query.path || [];
+  const qp = req.query['...path'];
+  const rawPath = Array.isArray(qp) ? qp : qp ? [qp] : [];
+  const pathParts = rawPath[0] === '__root' ? [] : rawPath;
   const route = pathParts.join('/');
 
   try {
