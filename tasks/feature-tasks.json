@@ -1,0 +1,232 @@
+{
+  "project": "Pokemon Marketplace",
+  "created": "2026-02-07",
+  "features": [
+    {
+      "id": "trading-system",
+      "name": "Complete Trading System",
+      "description": "Finish the trading system - backend is complete, frontend needs Create Trade UI and Cancel functionality",
+      "status": "partial",
+      "tasks": [
+        {
+          "id": "trade-1",
+          "title": "Add useCancelTrade hook",
+          "description": "Create React Query mutation hook for cancelling trades. The API method already exists in api.ts (cancelTrade), just need the hook in useApi.ts",
+          "priority": "high",
+          "status": "pending",
+          "file": "apps/web/src/hooks/useApi.ts",
+          "effort": "small",
+          "dependencies": []
+        },
+        {
+          "id": "trade-2",
+          "title": "Add Cancel button to Trades UI",
+          "description": "In Trades.tsx, add a Cancel button for pending trades where the current user is the initiator. Should appear in the trade detail modal alongside the 'Waiting for response' message",
+          "priority": "high",
+          "status": "pending",
+          "file": "apps/web/src/pages/Trades.tsx",
+          "effort": "small",
+          "dependencies": ["trade-1"]
+        },
+        {
+          "id": "trade-3",
+          "title": "Add expired status to filter tabs",
+          "description": "Add 'Expired' to the status filter tabs in Trades.tsx. The status already exists in the type definition, just needs to be added to the filter array",
+          "priority": "low",
+          "status": "pending",
+          "file": "apps/web/src/pages/Trades.tsx",
+          "effort": "tiny",
+          "dependencies": []
+        },
+        {
+          "id": "trade-4",
+          "title": "Create TradeCreationModal component",
+          "description": "Build a modal component for creating new trades with: 1) User selector (search/select recipient), 2) Pokemon selector for own Pokemon to offer, 3) Pokemon selector for recipient's Pokemon to request, 4) Coins input (optional), 5) Message input (optional), 6) Create Trade button",
+          "priority": "high",
+          "status": "pending",
+          "file": "apps/web/src/components/trades/TradeCreationModal.tsx",
+          "effort": "large",
+          "dependencies": ["trade-5", "trade-6"]
+        },
+        {
+          "id": "trade-5",
+          "title": "Add API method to get user's Pokemon for trading",
+          "description": "Need endpoint to fetch another user's tradeable Pokemon (not in active trades). Check if this already exists or needs to be created",
+          "priority": "high",
+          "status": "pending",
+          "file": "api/pokemon/[...path].js",
+          "effort": "medium",
+          "dependencies": []
+        },
+        {
+          "id": "trade-6",
+          "title": "Add user search/list for trade recipient selection",
+          "description": "Reuse the existing getUsers API or add search functionality to find users to trade with",
+          "priority": "medium",
+          "status": "pending",
+          "file": "apps/web/src/services/api.ts",
+          "effort": "small",
+          "dependencies": []
+        },
+        {
+          "id": "trade-7",
+          "title": "Enable 'New Trade' button and wire up modal",
+          "description": "Remove the 'disabled' attribute from the 'New Trade' button in Trades.tsx and connect it to open the TradeCreationModal",
+          "priority": "high",
+          "status": "pending",
+          "file": "apps/web/src/pages/Trades.tsx",
+          "effort": "small",
+          "dependencies": ["trade-4"]
+        },
+        {
+          "id": "trade-8",
+          "title": "Add trade initiation from UserProfile page",
+          "description": "Add a 'Trade with [username]' button on the UserProfile page that opens the trade creation modal pre-filled with that user as recipient",
+          "priority": "medium",
+          "status": "pending",
+          "file": "apps/web/src/pages/UserProfile.tsx",
+          "effort": "small",
+          "dependencies": ["trade-4"]
+        },
+        {
+          "id": "trade-9",
+          "title": "Show trade message in detail modal",
+          "description": "The Trade model has a message field that is stored but not displayed in the UI. Add message display to the trade detail modal",
+          "priority": "low",
+          "status": "pending",
+          "file": "apps/web/src/pages/Trades.tsx",
+          "effort": "tiny",
+          "dependencies": []
+        }
+      ]
+    },
+    {
+      "id": "nickname-system",
+      "name": "One-Time Pokemon Nickname",
+      "description": "Allow users to set a nickname for their Pokemon, but only once per Pokemon",
+      "status": "not_started",
+      "tasks": [
+        {
+          "id": "nick-1",
+          "title": "Add nicknameSetAt field to UserPokemon model",
+          "description": "Add a nullable DateTime field 'nicknameSetAt' to track when nickname was first set. This enforces the one-time rule. Run migration after.",
+          "priority": "high",
+          "status": "pending",
+          "file": "apps/api/prisma/schema.prisma",
+          "effort": "small",
+          "dependencies": []
+        },
+        {
+          "id": "nick-2",
+          "title": "Update PATCH endpoint to enforce one-time nickname",
+          "description": "Modify the Pokemon PATCH handler in api/pokemon/[...path].js to: 1) Check if nicknameSetAt is already set, 2) If set, reject nickname changes with error, 3) If not set and nickname provided, set both nickname and nicknameSetAt",
+          "priority": "high",
+          "status": "pending",
+          "file": "api/pokemon/[...path].js",
+          "effort": "small",
+          "dependencies": ["nick-1"]
+        },
+        {
+          "id": "nick-3",
+          "title": "Add setNickname API method",
+          "description": "Add a setNickname(pokemonId, nickname) method to the API service that calls PATCH /api/pokemon/:id with the nickname",
+          "priority": "high",
+          "status": "pending",
+          "file": "apps/web/src/services/api.ts",
+          "effort": "tiny",
+          "dependencies": []
+        },
+        {
+          "id": "nick-4",
+          "title": "Add useSetNickname mutation hook",
+          "description": "Create a React Query mutation hook for setting nicknames, invalidating pokemon queries on success",
+          "priority": "high",
+          "status": "pending",
+          "file": "apps/web/src/hooks/useApi.ts",
+          "effort": "small",
+          "dependencies": ["nick-3"]
+        },
+        {
+          "id": "nick-5",
+          "title": "Add nickname input to Pokemon detail modal in Collection",
+          "description": "In the Collection page's Pokemon detail modal, add: 1) Show current nickname or 'No nickname' if null, 2) If nicknameSetAt is null, show an input field and 'Set Nickname' button, 3) If nicknameSetAt is set, show nickname as read-only with '(permanent)' indicator, 4) Validation: 1-20 characters",
+          "priority": "high",
+          "status": "pending",
+          "file": "apps/web/src/pages/Collection.tsx",
+          "effort": "medium",
+          "dependencies": ["nick-4"]
+        },
+        {
+          "id": "nick-6",
+          "title": "Include nicknameSetAt in Pokemon API response",
+          "description": "Update the Pokemon list/detail handlers to include nicknameSetAt in the response so frontend knows if nickname can be changed",
+          "priority": "high",
+          "status": "pending",
+          "file": "api/pokemon/[...path].js",
+          "effort": "tiny",
+          "dependencies": ["nick-1"]
+        },
+        {
+          "id": "nick-7",
+          "title": "Update TypeScript types for nicknameSetAt",
+          "description": "Add nicknameSetAt field to Pokemon interfaces in the frontend",
+          "priority": "medium",
+          "status": "pending",
+          "file": "apps/web/src/pages/Collection.tsx",
+          "effort": "tiny",
+          "dependencies": ["nick-6"]
+        },
+        {
+          "id": "nick-8",
+          "title": "Show nickname prominently throughout UI",
+          "description": "Ensure nickname (when set) is displayed instead of species name in: Collection grid, Team display, Trade modals, Evolution page. Currently partially done in some places.",
+          "priority": "low",
+          "status": "pending",
+          "file": "multiple",
+          "effort": "small",
+          "dependencies": ["nick-5"]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "trading_system": {
+      "backend_status": "complete",
+      "frontend_status": "partial",
+      "missing_features": [
+        "Create Trade UI/Modal",
+        "Cancel Trade button",
+        "Expired filter tab",
+        "Message display"
+      ],
+      "total_tasks": 9
+    },
+    "nickname_system": {
+      "backend_status": "partial",
+      "frontend_status": "not_started",
+      "current_state": "Nickname field exists in DB, can be updated unlimited times via PATCH endpoint, no UI to set it",
+      "required_changes": [
+        "Add nicknameSetAt field for one-time enforcement",
+        "Update PATCH to enforce one-time rule",
+        "Add nickname input UI in Collection modal"
+      ],
+      "total_tasks": 8
+    },
+    "implementation_order": [
+      "nick-1 - Add DB field and migrate",
+      "nick-2, nick-6 - Update backend",
+      "nick-3, nick-4, nick-5, nick-7 - Frontend nickname feature",
+      "trade-1, trade-2 - Quick win: Cancel trade functionality",
+      "trade-3, trade-9 - Quick wins: Expired filter and message display",
+      "trade-5, trade-6 - Backend prep for trade creation",
+      "trade-4, trade-7, trade-8 - Trade creation modal"
+    ],
+    "total_tasks": 17,
+    "estimated_effort": {
+      "tiny": 4,
+      "small": 8,
+      "medium": 3,
+      "large": 2
+    }
+  }
+}

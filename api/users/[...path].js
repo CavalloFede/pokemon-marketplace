@@ -187,6 +187,46 @@ async function handleDailyRewardPost(req, res, auth) {
   });
 }
 
+async function handleListUsers(req, res) {
+  const page = parseInt(req.query.page) || 1;
+  const pageSize = parseInt(req.query.pageSize) || 20;
+
+  const [users, total] = await Promise.all([
+    prisma.user.findMany({
+      select: {
+        id: true,
+        displayName: true,
+        avatarUrl: true,
+        createdAt: true,
+        _count: { select: { pokemon: true, pokedex: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize
+    }),
+    prisma.user.count()
+  ]);
+
+  const usersWithStats = users.map(user => ({
+    id: user.id,
+    displayName: user.displayName,
+    avatarUrl: user.avatarUrl,
+    createdAt: user.createdAt,
+    stats: {
+      totalPokemon: user._count.pokemon,
+      pokedexCount: user._count.pokedex
+    }
+  }));
+
+  return res.status(200).json({
+    data: usersWithStats,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.ceil(total / pageSize)
+  });
+}
+
 async function handleGetUser(req, res, userId) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -228,6 +268,64 @@ async function handleGetUser(req, res, userId) {
   });
 }
 
+async function handleGetUserPokemon(req, res, userId) {
+  // Get user's Pokemon for trading (excludes those in active trades)
+  const page = parseInt(req.query.page) || 1;
+  const pageSize = parseInt(req.query.pageSize) || 50;
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  // Get Pokemon IDs that are in pending trades
+  const pendingTrades = await prisma.trade.findMany({
+    where: {
+      status: 'pending',
+      OR: [
+        { initiatorId: userId },
+        { receiverId: userId }
+      ]
+    },
+    select: { initiatorPokemonIds: true, receiverPokemonIds: true, initiatorId: true, receiverId: true }
+  });
+
+  const pokemonInTrades = new Set();
+  for (const trade of pendingTrades) {
+    if (trade.initiatorId === userId) {
+      trade.initiatorPokemonIds.forEach(id => pokemonInTrades.add(id));
+    }
+    if (trade.receiverId === userId) {
+      trade.receiverPokemonIds.forEach(id => pokemonInTrades.add(id));
+    }
+  }
+
+  const [pokemon, total] = await Promise.all([
+    prisma.userPokemon.findMany({
+      where: {
+        userId,
+        id: { notIn: Array.from(pokemonInTrades) }
+      },
+      include: { species: true },
+      orderBy: [{ species: { rarity: 'desc' } }, { species: { name: 'asc' } }],
+      skip: (page - 1) * pageSize,
+      take: pageSize
+    }),
+    prisma.userPokemon.count({
+      where: {
+        userId,
+        id: { notIn: Array.from(pokemonInTrades) }
+      }
+    })
+  ]);
+
+  return res.status(200).json({
+    data: pokemon,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.ceil(total / pageSize)
+  });
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
@@ -258,10 +356,22 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    // GET /api/users/:id (single path segment that isn't 'me')
-    if (pathParts.length === 1 && pathParts[0] !== 'me') {
+    // GET /api/users (root - list all users, rewritten to __root)
+    if (pathParts.length === 1 && pathParts[0] === '__root') {
+      if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+      return handleListUsers(req, res);
+    }
+
+    // GET /api/users/:id (single path segment that isn't 'me' or '__root')
+    if (pathParts.length === 1 && pathParts[0] !== 'me' && pathParts[0] !== '__root') {
       if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
       return handleGetUser(req, res, pathParts[0]);
+    }
+
+    // GET /api/users/:id/pokemon (get user's tradeable Pokemon)
+    if (pathParts.length === 2 && pathParts[1] === 'pokemon') {
+      if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+      return handleGetUserPokemon(req, res, pathParts[0]);
     }
 
     return res.status(404).json({ error: 'Not found' });

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useTrades, useAcceptTrade, useRejectTrade } from '../hooks/useApi';
+import { useTrades, useAcceptTrade, useRejectTrade, useCancelTrade } from '../hooks/useApi';
 import { useAuthStore } from '../store/authStore';
+import TradeCreationModal from '../components/trades/TradeCreationModal';
 
 type TradeStatus = 'all' | 'pending' | 'accepted' | 'rejected' | 'expired';
 
@@ -40,12 +41,14 @@ export default function Trades() {
   const { user } = useAuthStore();
   const [statusFilter, setStatusFilter] = useState<TradeStatus>('all');
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const { data: trades, isLoading } = useTrades(
     statusFilter !== 'all' ? { status: statusFilter } : undefined
   );
   const acceptTrade = useAcceptTrade();
   const rejectTrade = useRejectTrade();
+  const cancelTrade = useCancelTrade();
 
   const handleAccept = async (tradeId: string) => {
     try {
@@ -67,6 +70,16 @@ export default function Trades() {
     }
   };
 
+  const handleCancel = async (tradeId: string) => {
+    try {
+      await cancelTrade.mutateAsync(tradeId);
+      setSelectedTrade(null);
+    } catch (error: any) {
+      console.error('Failed to cancel trade:', error);
+      alert(error.message || 'Failed to cancel trade');
+    }
+  };
+
   const isReceived = (trade: Trade) => trade.receiver.id === user?.id;
   const isSent = (trade: Trade) => trade.initiator.id === user?.id;
 
@@ -84,14 +97,14 @@ export default function Trades() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Trades</h1>
-        <button className="btn btn-primary" disabled>
-          New Trade (Coming Soon)
+        <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
+          New Trade
         </button>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-2 flex-wrap">
-        {(['all', 'pending', 'accepted', 'rejected'] as TradeStatus[]).map((status) => (
+        {(['all', 'pending', 'accepted', 'rejected', 'expired'] as TradeStatus[]).map((status) => (
           <button
             key={status}
             onClick={() => setStatusFilter(status)}
@@ -208,8 +221,8 @@ export default function Trades() {
               ? `No ${statusFilter} trades found.`
               : 'Start a trade with another trainer!'}
           </p>
-          <button className="btn btn-primary" disabled>
-            Create Trade (Coming Soon)
+          <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
+            Create Trade
           </button>
         </div>
       )}
@@ -350,13 +363,28 @@ export default function Trades() {
             )}
 
             {selectedTrade.status === 'pending' && isSent(selectedTrade) && (
-              <p className="text-center text-gray-400">
-                Waiting for {selectedTrade.receiver.displayName} to respond...
-              </p>
+              <div className="space-y-3">
+                <p className="text-center text-gray-400">
+                  Waiting for {selectedTrade.receiver.displayName} to respond...
+                </p>
+                <button
+                  onClick={() => handleCancel(selectedTrade.id)}
+                  disabled={cancelTrade.isPending}
+                  className="btn btn-secondary w-full"
+                >
+                  {cancelTrade.isPending ? 'Cancelling...' : 'Cancel Trade'}
+                </button>
+              </div>
             )}
           </div>
         </div>
       )}
+
+      {/* Trade Creation Modal */}
+      <TradeCreationModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+      />
     </div>
   );
 }

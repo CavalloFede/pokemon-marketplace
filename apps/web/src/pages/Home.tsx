@@ -3,6 +3,13 @@ import { Link } from 'react-router-dom';
 import { useUser, useClaimDailyReward, usePokemon, usePokedexStats, useShopItems, useEvolutionReady } from '../hooks/useApi';
 import { useAuthStore } from '../store/authStore';
 
+const EGG_NAMES: Record<string, string> = {
+  mystery: 'Mystery Egg',
+  common: 'Common Egg',
+  rare: 'Rare Egg',
+  legendary: 'Legendary Egg',
+};
+
 export default function Home() {
   const { user } = useAuthStore();
   const { data: userData } = useUser();
@@ -184,7 +191,7 @@ export default function Home() {
                 <div className="aspect-square bg-gray-700 rounded-lg mb-3 flex items-center justify-center">
                   <span className="text-6xl">🥚</span>
                 </div>
-                <h3 className="font-bold">{item.name}</h3>
+                <h3 className="font-bold">{EGG_NAMES[item.eggCategory] || item.eggCategory || 'Egg'}</h3>
                 <p className="text-pokemon-electric">{item.price} 🪙</p>
               </Link>
             ))

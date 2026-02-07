@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/authStore';
 // Query keys
 export const queryKeys = {
   user: ['user'] as const,
+  publicProfile: (userId: string) => ['user', 'public', userId] as const,
   pokemon: ['pokemon'] as const,
   team: ['team'] as const,
   pokedex: ['pokedex'] as const,
@@ -25,6 +26,29 @@ export function useUser() {
   return useQuery({
     queryKey: queryKeys.user,
     queryFn: () => api.getCurrentUser(),
+  });
+}
+
+export function useUsers(params?: { page?: number }) {
+  return useQuery({
+    queryKey: ['users', params],
+    queryFn: () => api.getUsers(params),
+  });
+}
+
+export function usePublicProfile(userId: string) {
+  return useQuery({
+    queryKey: queryKeys.publicProfile(userId),
+    queryFn: () => api.getPublicProfile(userId),
+    enabled: !!userId,
+  });
+}
+
+export function useUserPokemon(userId: string, params?: { page?: number }) {
+  return useQuery({
+    queryKey: ['user', userId, 'pokemon', params],
+    queryFn: () => api.getUserPokemon(userId, params),
+    enabled: !!userId,
   });
 }
 
@@ -208,6 +232,17 @@ export function useRejectTrade() {
   });
 }
 
+export function useCancelTrade() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (tradeId: string) => api.cancelTrade(tradeId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.trades });
+    },
+  });
+}
+
 // Evolution hooks
 export function useEvolutionReady() {
   return useQuery({
@@ -240,6 +275,19 @@ export function useSuppressEvolution() {
     mutationFn: (pokemonId: string) => api.suppressEvolutionNotification(pokemonId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.evolutionReady });
+    },
+  });
+}
+
+export function useSetNickname() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ pokemonId, nickname }: { pokemonId: string; nickname: string }) =>
+      api.setNickname(pokemonId, nickname),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.pokemon });
+      queryClient.invalidateQueries({ queryKey: queryKeys.team });
     },
   });
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { usePokemon, useTeam, useUpdateTeam, useEvolutionReady } from '../hooks/useApi';
+import { usePokemon, useTeam, useUpdateTeam, useEvolutionReady, useSetNickname } from '../hooks/useApi';
 
 const RARITY_OPTIONS = [
   { value: '', label: 'All Rarity' },
@@ -34,6 +34,7 @@ interface CollectionPokemon {
   id: string;
   speciesId: number;
   nickname: string | null;
+  nicknameSetAt: string | null;
   isShiny: boolean;
   isInTeam: boolean;
   teamPosition: number | null;
@@ -73,6 +74,8 @@ export default function Collection() {
   const [rarity, setRarity] = useState('');
   const [selectedPokemon, setSelectedPokemon] = useState<CollectionPokemon | null>(null);
   const [showInfo, setShowInfo] = useState(false);
+  const [nicknameInput, setNicknameInput] = useState('');
+  const [nicknameError, setNicknameError] = useState('');
 
   const { data: pokemonData, isLoading } = usePokemon({
     rarity: rarity || undefined,
@@ -82,6 +85,7 @@ export default function Collection() {
   const { data: teamData } = useTeam();
   const { data: evolutionReady } = useEvolutionReady();
   const updateTeam = useUpdateTeam();
+  const setNickname = useSetNickname();
 
   const pokemon = pokemonData?.pokemon ?? [];
   const total = pokemonData?.total ?? 0;
@@ -111,6 +115,27 @@ export default function Collection() {
       setSelectedPokemon(null);
     } catch (error) {
       console.error('Failed to remove from team:', error);
+    }
+  };
+
+  const handleSetNickname = async () => {
+    if (!selectedPokemon) return;
+    const trimmed = nicknameInput.trim();
+    if (!trimmed) {
+      setNicknameError('Nickname cannot be empty');
+      return;
+    }
+    if (trimmed.length > 20) {
+      setNicknameError('Nickname must be 20 characters or less');
+      return;
+    }
+    try {
+      await setNickname.mutateAsync({ pokemonId: selectedPokemon.id, nickname: trimmed });
+      setNicknameInput('');
+      setNicknameError('');
+      setSelectedPokemon(null);
+    } catch (error: any) {
+      setNicknameError(error.message || 'Failed to set nickname');
     }
   };
 
@@ -323,6 +348,51 @@ export default function Collection() {
                   <span className="text-yellow-400">Yes ✨</span>
                 </div>
               )}
+
+              {/* Nickname Section */}
+              <div className="pt-3 border-t border-gray-700">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-gray-400">Nickname</span>
+                  {selectedPokemon.nicknameSetAt ? (
+                    <span className="text-pokemon-electric">
+                      {selectedPokemon.nickname}
+                      <span className="text-gray-500 text-xs ml-2">(permanent)</span>
+                    </span>
+                  ) : (
+                    <span className="text-gray-500 italic">Not set</span>
+                  )}
+                </div>
+                {!selectedPokemon.nicknameSetAt && (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Enter nickname (1-20 chars)"
+                        value={nicknameInput}
+                        onChange={(e) => {
+                          setNicknameInput(e.target.value);
+                          setNicknameError('');
+                        }}
+                        maxLength={20}
+                        className="input flex-1 text-sm"
+                      />
+                      <button
+                        onClick={handleSetNickname}
+                        disabled={setNickname.isPending || !nicknameInput.trim()}
+                        className="btn btn-secondary text-sm"
+                      >
+                        {setNickname.isPending ? '...' : 'Set'}
+                      </button>
+                    </div>
+                    {nicknameError && (
+                      <p className="text-red-400 text-xs">{nicknameError}</p>
+                    )}
+                    <p className="text-gray-500 text-xs">
+                      Note: Nickname can only be set once!
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex gap-2">

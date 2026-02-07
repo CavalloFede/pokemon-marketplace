@@ -17,6 +17,7 @@
     { "source": "/api/pokemon/:id/evolution-settings", "destination": "/api/pokemon/:id?action=evolution-settings" },
     { "source": "/api/pokedex", "destination": "/api/pokedex/__root" },
     { "source": "/api/users/me/daily-reward", "destination": "/api/users/me?action=daily-reward" },
+    { "source": "/api/users", "destination": "/api/users/__root" },
     { "source": "/api/trades", "destination": "/api/trades/__root" },
     { "source": "/api/trades/:id/accept", "destination": "/api/trades/:id?action=accept" },
     { "source": "/api/trades/:id/reject", "destination": "/api/trades/:id?action=reject" },

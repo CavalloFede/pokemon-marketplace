@@ -31,9 +31,17 @@ const EGG_WEIGHTS = {
   ]
 };
 
-// Experience formula: exp = level^2 * 10
+// Experience formula - must match pokemon/[...path].js
+const BASE_EXP_PER_LEVEL = 100;
+const EXP_GROWTH_RATE = 1.15;
+
 function getExpForLevel(level) {
-  return level * level * 10;
+  if (level <= 1) return 0;
+  let totalExp = 0;
+  for (let i = 2; i <= level; i++) {
+    totalExp += Math.floor(BASE_EXP_PER_LEVEL * Math.pow(EXP_GROWTH_RATE, i - 2));
+  }
+  return totalExp;
 }
 
 // Weighted random selection

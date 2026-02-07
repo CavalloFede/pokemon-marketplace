@@ -16,6 +16,8 @@ const WantListings = lazy(() => import('./pages/WantListings'));
 const WantListingDetail = lazy(() => import('./pages/WantListingDetail'));
 const MyWantListings = lazy(() => import('./pages/MyWantListings'));
 const Login = lazy(() => import('./pages/Login'));
+const UserProfile = lazy(() => import('./pages/UserProfile'));
+const Trainers = lazy(() => import('./pages/Trainers'));
 
 function LoadingSpinner() {
   return (
@@ -58,6 +60,8 @@ function App() {
           <Route path="want-listings" element={<WantListings />} />
           <Route path="want-listings/:id" element={<WantListingDetail />} />
           <Route path="my-listings" element={<MyWantListings />} />
+          <Route path="user/:userId" element={<UserProfile />} />
+          <Route path="trainers" element={<Trainers />} />
         </Route>
       </Routes>
     </Suspense>

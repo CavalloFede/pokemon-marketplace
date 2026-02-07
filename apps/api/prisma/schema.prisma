@@ -137,6 +137,7 @@ model UserPokemon {
   userId         String         @map("user_id")
   speciesId      Int            @map("species_id")
   nickname       String?
+  nicknameSetAt  DateTime?      @map("nickname_set_at") // Once set, nickname cannot be changed
   isShiny        Boolean        @default(false) @map("is_shiny")
   isInTeam       Boolean        @default(false) @map("is_in_team")
   teamPosition   Int?           @map("team_position") // 1-6

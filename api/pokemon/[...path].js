@@ -10,7 +10,7 @@ const MAX_TEAM_SIZE = 6;
 const BASE_EXP_PER_LEVEL = 100;
 const EXP_GROWTH_RATE = 1.15;
 const MAX_LEVEL = 100;
-const PASSIVE_EXP_PER_HOUR = 10;
+const PASSIVE_EXP_PER_HOUR = 100;
 const MAX_PASSIVE_HOURS = 24;
 const RARITY_PRICES = {
   common: 100, uncommon: 250, rare: 500, epic: 1000, legendary: 5000, mythical: 10000
@@ -60,11 +60,51 @@ function calculateLevelInfo(baseLevel, baseExp, lastExpGainAt) {
     expForNext = getExpForLevel(level + 1);
   }
 
-  return { level, totalExp };
+  // Return whether XP was gained (needs DB update)
+  const needsUpdate = passiveExp > 0;
+  return { level, totalExp, passiveExp, needsUpdate };
+}
+
+// Update Pokemon in DB with accumulated passive XP
+async function bankPassiveExp(pokemonId, newLevel, newExp) {
+  await prisma.userPokemon.update({
+    where: { id: pokemonId },
+    data: {
+      level: newLevel,
+      experience: newExp,
+      lastExperienceGainAt: new Date()
+    }
+  });
 }
 
 function getSellPrice(rarity) {
   return Math.floor((RARITY_PRICES[rarity] || 100) * SELL_PRICE_MULTIPLIER);
+}
+
+function enhancePokemonWithLevelInfo(pokemon, needsBankingList = null) {
+  const levelInfo = calculateLevelInfo(pokemon.level, pokemon.experience, pokemon.lastExperienceGainAt);
+  const expForCurrentLevel = getExpForLevel(levelInfo.level);
+  const expForNextLevel = getExpForLevel(levelInfo.level + 1);
+  const expInCurrentLevel = levelInfo.totalExp - expForCurrentLevel;
+  const expNeededForNext = expForNextLevel - expForCurrentLevel;
+
+  // Track Pokemon that need their XP banked to DB
+  if (needsBankingList && levelInfo.needsUpdate) {
+    needsBankingList.push({ id: pokemon.id, level: levelInfo.level, exp: levelInfo.totalExp });
+  }
+
+  return {
+    ...pokemon,
+    level: levelInfo.level,
+    experience: levelInfo.totalExp,
+    levelInfo: {
+      level: levelInfo.level,
+      experience: levelInfo.totalExp,
+      expToNextLevel: expForNextLevel - levelInfo.totalExp,
+      expProgress: expNeededForNext > 0 ? Math.floor((expInCurrentLevel / expNeededForNext) * 100) : 100,
+      isMaxLevel: levelInfo.level >= MAX_LEVEL
+    }
+  };
 }
 
 // ---- Route handlers ----
@@ -113,8 +153,16 @@ async function handleListPokemon(req, res, auth) {
     prisma.userPokemon.count({ where })
   ]);
 
+  const needsBanking = [];
+  const enhancedPokemon = pokemon.map(p => enhancePokemonWithLevelInfo(p, needsBanking));
+
+  // Bank passive XP to database (fire and forget, don't block response)
+  if (needsBanking.length > 0) {
+    Promise.all(needsBanking.map(p => bankPassiveExp(p.id, p.level, p.exp))).catch(console.error);
+  }
+
   return res.status(200).json({
-    data: pokemon, total, page, pageSize,
+    data: enhancedPokemon, total, page, pageSize,
     totalPages: Math.ceil(total / pageSize)
   });
 }
@@ -126,7 +174,12 @@ async function handleTeam(req, res, auth) {
       include: { species: { include: { evolvesTo: true } } },
       orderBy: { teamPosition: 'asc' }
     });
-    return res.status(200).json({ team });
+    const needsBanking = [];
+    const enhancedTeam = team.map(p => enhancePokemonWithLevelInfo(p, needsBanking));
+    if (needsBanking.length > 0) {
+      Promise.all(needsBanking.map(p => bankPassiveExp(p.id, p.level, p.exp))).catch(console.error);
+    }
+    return res.status(200).json({ team: enhancedTeam });
   }
 
   if (req.method === 'PUT') {
@@ -160,7 +213,12 @@ async function handleTeam(req, res, auth) {
       include: { species: { include: { evolvesTo: true } } },
       orderBy: { teamPosition: 'asc' }
     });
-    return res.status(200).json({ team });
+    const needsBanking = [];
+    const updatedTeam = team.map(p => enhancePokemonWithLevelInfo(p, needsBanking));
+    if (needsBanking.length > 0) {
+      Promise.all(needsBanking.map(p => bankPassiveExp(p.id, p.level, p.exp))).catch(console.error);
+    }
+    return res.status(200).json({ team: updatedTeam });
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
@@ -207,29 +265,47 @@ async function handlePokemonById(req, res, auth, pokemonId) {
       include: { species: { include: { evolvesTo: true } } }
     });
     if (!pokemon) return res.status(404).json({ error: 'Pokemon not found' });
-    return res.status(200).json(pokemon);
+    const needsBanking = [];
+    const enhanced = enhancePokemonWithLevelInfo(pokemon, needsBanking);
+    if (needsBanking.length > 0) {
+      Promise.all(needsBanking.map(p => bankPassiveExp(p.id, p.level, p.exp))).catch(console.error);
+    }
+    return res.status(200).json(enhanced);
   }
 
   if (req.method === 'PATCH') {
     const { nickname, isFavorite } = req.body || {};
     const updateData = {};
-    if (nickname !== undefined) {
-      if (nickname && (nickname.length < 1 || nickname.length > 20)) {
-        return res.status(400).json({ error: 'Nickname must be between 1 and 20 characters' });
-      }
-      updateData.nickname = nickname || null;
-    }
-    if (isFavorite !== undefined) updateData.isFavorite = isFavorite;
 
     const pokemon = await prisma.userPokemon.findFirst({ where: { id: pokemonId, userId: auth.userId } });
     if (!pokemon) return res.status(404).json({ error: 'Pokemon not found' });
+
+    if (nickname !== undefined) {
+      // Enforce one-time nickname rule
+      if (pokemon.nicknameSetAt) {
+        return res.status(400).json({ error: 'Nickname has already been set and cannot be changed' });
+      }
+      if (nickname && (nickname.length < 1 || nickname.length > 20)) {
+        return res.status(400).json({ error: 'Nickname must be between 1 and 20 characters' });
+      }
+      if (nickname) {
+        updateData.nickname = nickname;
+        updateData.nicknameSetAt = new Date();
+      }
+    }
+    if (isFavorite !== undefined) updateData.isFavorite = isFavorite;
 
     const updated = await prisma.userPokemon.update({
       where: { id: pokemonId },
       data: updateData,
       include: { species: { include: { evolvesTo: true } } }
     });
-    return res.status(200).json(updated);
+    const needsBanking = [];
+    const enhanced = enhancePokemonWithLevelInfo(updated, needsBanking);
+    if (needsBanking.length > 0) {
+      Promise.all(needsBanking.map(p => bankPassiveExp(p.id, p.level, p.exp))).catch(console.error);
+    }
+    return res.status(200).json(enhanced);
   }
 
   return res.status(405).json({ error: 'Method not allowed' });

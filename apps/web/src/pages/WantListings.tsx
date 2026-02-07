@@ -115,7 +115,10 @@ export default function WantListings() {
 
               {/* Posted by */}
               <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
+                <Link
+                  to={`/user/${listing.user.id}`}
+                  className="flex items-center gap-2 hover:text-pokemon-electric transition-colors"
+                >
                   {listing.user.avatarUrl ? (
                     <img
                       src={listing.user.avatarUrl}
@@ -127,8 +130,8 @@ export default function WantListings() {
                       {listing.user.displayName[0]}
                     </div>
                   )}
-                  <span className="text-gray-400">{listing.user.displayName}</span>
-                </div>
+                  <span className="text-gray-400 hover:text-pokemon-electric">{listing.user.displayName}</span>
+                </Link>
                 <span className="text-gray-500">
                   {listing._count.counterOffers} offers
                 </span>

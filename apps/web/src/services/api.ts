@@ -83,6 +83,83 @@ class ApiClient {
   }
 
   // Users
+  async getUsers(params?: { page?: number; pageSize?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.set('page', params.page.toString());
+    if (params?.pageSize) searchParams.set('pageSize', params.pageSize.toString());
+
+    const query = searchParams.toString();
+    return this.request<{
+      data: Array<{
+        id: string;
+        displayName: string;
+        avatarUrl: string | null;
+        createdAt: string;
+        stats: {
+          totalPokemon: number;
+          pokedexCount: number;
+        };
+      }>;
+      total: number;
+      page: number;
+      pageSize: number;
+      totalPages: number;
+    }>(`/users${query ? `?${query}` : ''}`);
+  }
+
+  async getPublicProfile(userId: string) {
+    return this.request<{
+      id: string;
+      displayName: string;
+      avatarUrl: string | null;
+      createdAt: string;
+      pokemon: Array<{
+        id: string;
+        nickname: string | null;
+        isShiny: boolean;
+        teamPosition: number;
+        species: {
+          name: string;
+          spriteUrl: string;
+          spriteShinyUrl: string;
+        };
+      }>;
+      stats: {
+        totalPokemon: number;
+        pokedexCount: number;
+        shinyCount: number;
+        tradesCompleted: number;
+      };
+    }>(`/users/${userId}`);
+  }
+
+  async getUserPokemon(userId: string, params?: { page?: number; pageSize?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.set('page', params.page.toString());
+    if (params?.pageSize) searchParams.set('pageSize', params.pageSize.toString());
+
+    const query = searchParams.toString();
+    return this.request<{
+      data: Array<{
+        id: string;
+        nickname: string | null;
+        isShiny: boolean;
+        level: number;
+        species: {
+          id: number;
+          name: string;
+          spriteUrl: string;
+          spriteShinyUrl: string;
+          rarity: string;
+        };
+      }>;
+      total: number;
+      page: number;
+      pageSize: number;
+      totalPages: number;
+    }>(`/users/${userId}/pokemon${query ? `?${query}` : ''}`);
+  }
+
   async getCurrentUser(idToken?: string) {
     return this.request<{
       id: string;
@@ -353,6 +430,17 @@ class ApiClient {
     return this.request<{ success: boolean }>(`/pokemon/${pokemonId}/evolution-settings`, {
       method: 'PATCH',
       body: JSON.stringify({ suppressNotification: true })
+    });
+  }
+
+  async setNickname(pokemonId: string, nickname: string) {
+    return this.request<{
+      id: string;
+      nickname: string;
+      nicknameSetAt: string;
+    }>(`/pokemon/${pokemonId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ nickname })
     });
   }
 

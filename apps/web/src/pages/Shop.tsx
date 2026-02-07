@@ -112,7 +112,7 @@ export default function Shop() {
               <div
                 key={egg.id}
                 onClick={() => canAfford && !purchase.isPending && handlePurchase(egg.id)}
-                className={`card transition-all cursor-pointer ${canAfford ? 'hover:ring-2 hover:ring-pokemon-electric hover:scale-105' : 'opacity-60 cursor-not-allowed'}`}
+                className={`card flex flex-col transition-all cursor-pointer ${canAfford ? 'hover:ring-2 hover:ring-pokemon-electric hover:scale-105' : 'opacity-60 cursor-not-allowed'}`}
               >
                 <div className="aspect-square bg-gray-700 rounded-lg mb-3 flex items-center justify-center relative overflow-hidden">
                   <span className={`text-6xl ${isHatching ? 'animate-bounce' : 'animate-wiggle'}`}>
@@ -125,10 +125,10 @@ export default function Shop() {
                   )}
                 </div>
                 <h3 className="font-bold text-center">{EGG_NAMES[eggType] || 'Huevo'}</h3>
-                <p className="text-sm text-gray-400 mb-2 text-center">
+                <p className="text-sm text-gray-400 mb-2 text-center flex-grow">
                   {EGG_DESCRIPTIONS[eggType] || 'Pokemon aleatorio'}
                 </p>
-                <div className={`w-full text-center py-2 rounded-lg font-bold ${canAfford ? 'bg-pokemon-electric text-gray-900' : 'bg-gray-600 text-gray-400'}`}>
+                <div className={`w-full text-center py-2 rounded-lg font-bold mt-auto ${canAfford ? 'bg-pokemon-electric text-gray-900' : 'bg-gray-600 text-gray-400'}`}>
                   {purchase.isPending ? '...' : `${egg.price} 🪙`}
                 </div>
               </div>

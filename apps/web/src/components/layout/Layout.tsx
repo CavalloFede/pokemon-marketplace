@@ -9,6 +9,7 @@ const navItems = [
   { path: '/pokedex', label: 'Pokedex', icon: '📱' },
   { path: '/want-listings', label: 'Listings', icon: '📋' },
   { path: '/trades', label: 'Trades', icon: '🔄' },
+  { path: '/trainers', label: 'Trainers', icon: '👥' },
   { path: '/profile', label: 'Profile', icon: '👤' },
 ];
 
