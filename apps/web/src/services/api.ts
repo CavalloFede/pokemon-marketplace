@@ -133,33 +133,6 @@ class ApiClient {
     }>(`/users/${userId}`);
   }
 
-  async getUserPokemon(userId: string, params?: { page?: number; pageSize?: number }) {
-    const searchParams = new URLSearchParams();
-    if (params?.page) searchParams.set('page', params.page.toString());
-    if (params?.pageSize) searchParams.set('pageSize', params.pageSize.toString());
-
-    const query = searchParams.toString();
-    return this.request<{
-      data: Array<{
-        id: string;
-        nickname: string | null;
-        isShiny: boolean;
-        level: number;
-        species: {
-          id: number;
-          name: string;
-          spriteUrl: string;
-          spriteShinyUrl: string;
-          rarity: string;
-        };
-      }>;
-      total: number;
-      page: number;
-      pageSize: number;
-      totalPages: number;
-    }>(`/users/${userId}/pokemon${query ? `?${query}` : ''}`);
-  }
-
   async getCurrentUser(idToken?: string) {
     return this.request<{
       id: string;

@@ -1,14 +1,11 @@
-import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { usePublicProfile } from '../hooks/useApi';
 import { useAuthStore } from '../store/authStore';
-import TradeCreationModal from '../components/trades/TradeCreationModal';
 
 export default function UserProfile() {
   const { userId } = useParams<{ userId: string }>();
   const { user: currentUser } = useAuthStore();
   const { data: profile, isLoading, error } = usePublicProfile(userId || '');
-  const [showTradeModal, setShowTradeModal] = useState(false);
 
   // Redirect to own profile if viewing self
   if (userId === currentUser?.id) {
@@ -54,30 +51,22 @@ export default function UserProfile() {
     <div className="space-y-8">
       {/* Profile Header */}
       <div className="card">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <div className="w-24 h-24 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
-              {profile.avatarUrl ? (
-                <img
-                  src={profile.avatarUrl}
-                  alt={profile.displayName}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="text-4xl">👤</span>
-              )}
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold">{profile.displayName}</h1>
-              <p className="text-gray-400">Trainer since {joinDate}</p>
-            </div>
+        <div className="flex items-center gap-6">
+          <div className="w-24 h-24 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
+            {profile.avatarUrl ? (
+              <img
+                src={profile.avatarUrl}
+                alt={profile.displayName}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-4xl">👤</span>
+            )}
           </div>
-          <button
-            onClick={() => setShowTradeModal(true)}
-            className="btn btn-primary"
-          >
-            Trade
-          </button>
+          <div>
+            <h1 className="text-3xl font-bold">{profile.displayName}</h1>
+            <p className="text-gray-400">Trainer since {joinDate}</p>
+          </div>
         </div>
       </div>
 
@@ -146,12 +135,6 @@ export default function UserProfile() {
         )}
       </div>
 
-      {/* Trade Modal */}
-      <TradeCreationModal
-        isOpen={showTradeModal}
-        onClose={() => setShowTradeModal(false)}
-        preselectedUserId={userId}
-      />
     </div>
   );
 }

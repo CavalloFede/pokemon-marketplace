@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useTrades, useAcceptTrade, useRejectTrade, useCancelTrade } from '../hooks/useApi';
 import { useAuthStore } from '../store/authStore';
-import TradeCreationModal from '../components/trades/TradeCreationModal';
 
 type TradeStatus = 'all' | 'pending' | 'accepted' | 'rejected' | 'expired';
 
@@ -41,7 +40,6 @@ export default function Trades() {
   const { user } = useAuthStore();
   const [statusFilter, setStatusFilter] = useState<TradeStatus>('all');
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const { data: trades, isLoading } = useTrades(
     statusFilter !== 'all' ? { status: statusFilter } : undefined
@@ -96,10 +94,7 @@ export default function Trades() {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Trades</h1>
-        <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
-          New Trade
-        </button>
+        <h1 className="text-3xl font-bold">Trade History</h1>
       </div>
 
       {/* Tabs */}
@@ -221,9 +216,6 @@ export default function Trades() {
               ? `No ${statusFilter} trades found.`
               : 'Start a trade with another trainer!'}
           </p>
-          <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
-            Create Trade
-          </button>
         </div>
       )}
 
@@ -380,11 +372,6 @@ export default function Trades() {
         </div>
       )}
 
-      {/* Trade Creation Modal */}
-      <TradeCreationModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-      />
     </div>
   );
 }

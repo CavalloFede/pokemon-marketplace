@@ -44,14 +44,6 @@ export function usePublicProfile(userId: string) {
   });
 }
 
-export function useUserPokemon(userId: string, params?: { page?: number }) {
-  return useQuery({
-    queryKey: ['user', userId, 'pokemon', params],
-    queryFn: () => api.getUserPokemon(userId, params),
-    enabled: !!userId,
-  });
-}
-
 export function useClaimDailyReward() {
   const queryClient = useQueryClient();
   const setCoins = useAuthStore((state) => state.setCoins);
