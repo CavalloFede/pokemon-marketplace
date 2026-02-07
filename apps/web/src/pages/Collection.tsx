@@ -34,7 +34,7 @@ interface CollectionPokemon {
   id: string;
   speciesId: number;
   nickname: string | null;
-  nicknameSetAt: string | null;
+  nicknameSetAt?: string | null;
   isShiny: boolean;
   isInTeam: boolean;
   teamPosition: number | null;
