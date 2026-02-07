@@ -54,3 +54,4 @@ apps/generated/
 .cache/
 
 .vercel
+.env.production
