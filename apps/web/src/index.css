@@ -99,3 +99,31 @@
 .safe-area-pb {
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* Slide-up animation for mobile "More" sheet */
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.25s ease-out;
+}
+
+/* Fade-in for backdrop */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
