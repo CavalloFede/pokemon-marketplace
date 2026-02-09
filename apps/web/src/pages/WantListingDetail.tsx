@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   useWantListing,
   useMatchingPokemon,
+  usePokemon,
   useAcceptWantListing,
   useCreateCounterOffer,
   useAcceptCounterOffer,
@@ -38,7 +39,7 @@ export default function WantListingDetail() {
 
   const isOwner = user?.id === listing?.userId;
   const canAccept = !isOwner && listing?.status === 'open' && (matchingPokemon?.length || 0) > 0;
-  const canCounterOffer = !isOwner && listing?.status === 'open' && (matchingPokemon?.length || 0) > 0;
+  const canCounterOffer = !isOwner && listing?.status === 'open';
 
   const handleAccept = async (pokemonId: string) => {
     if (!id) return;
@@ -408,6 +409,9 @@ interface CounterOfferModalProps {
 
 function CounterOfferModal({ listing, matchingPokemon, onClose }: CounterOfferModalProps) {
   const createCounterOffer = useCreateCounterOffer();
+  const [pokemonSearch, setPokemonSearch] = useState('');
+  const { data: collectionData } = usePokemon({ search: pokemonSearch || undefined, limit: 50 });
+  const allPokemon = collectionData?.pokemon ?? [];
 
   const [selectedPokemonId, setSelectedPokemonId] = useState<string | null>(null);
   const [coinsRequested, setCoinsRequested] = useState(listing.coinsOffered);
@@ -465,10 +469,48 @@ function CounterOfferModal({ listing, matchingPokemon, onClose }: CounterOfferMo
         {/* Step 1: Select your Pokemon */}
         <div className="mb-6">
           <h3 className="font-medium mb-2">
-            1. Select your {listing.wantedSpecies.name} to offer
+            1. Select a Pokemon to offer
           </h3>
-          <div className="grid grid-cols-4 gap-2">
-            {matchingPokemon.map((pokemon) => (
+          <input
+            type="text"
+            value={pokemonSearch}
+            onChange={(e) => setPokemonSearch(e.target.value)}
+            className="w-full px-3 py-2 mb-3 bg-gray-700 rounded border border-gray-600 focus:border-pokemon-electric focus:outline-none text-sm"
+            placeholder="Search your collection..."
+          />
+          {matchingPokemon.length > 0 && !pokemonSearch && (
+            <p className="text-xs text-green-400 mb-2">
+              Matching {listing.wantedSpecies.name} shown first
+            </p>
+          )}
+          <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto">
+            {/* Show matching Pokemon first when not searching */}
+            {!pokemonSearch && matchingPokemon.map((pokemon) => (
+              <button
+                key={pokemon.id}
+                onClick={() => setSelectedPokemonId(pokemon.id)}
+                className={`p-2 rounded transition-colors ring-2 ring-green-500/50 ${
+                  selectedPokemonId === pokemon.id
+                    ? 'bg-pokemon-electric text-gray-900'
+                    : 'bg-gray-700 hover:bg-gray-600'
+                }`}
+              >
+                <img
+                  src={pokemon.isShiny
+                    ? pokemon.species.spriteShinyUrl
+                    : pokemon.species.spriteUrl
+                  }
+                  alt={pokemon.species.name}
+                  className="w-12 h-12 mx-auto pixelated"
+                />
+                <p className="text-xs text-center capitalize truncate">{pokemon.species.name}</p>
+                {pokemon.isShiny && <span className="text-xs">✨</span>}
+              </button>
+            ))}
+            {/* Show rest of collection */}
+            {allPokemon
+              .filter((p) => !pokemonSearch ? !matchingPokemon.some((m) => m.id === p.id) : true)
+              .map((pokemon) => (
               <button
                 key={pokemon.id}
                 onClick={() => setSelectedPokemonId(pokemon.id)}
@@ -486,10 +528,14 @@ function CounterOfferModal({ listing, matchingPokemon, onClose }: CounterOfferMo
                   alt={pokemon.species.name}
                   className="w-12 h-12 mx-auto pixelated"
                 />
+                <p className="text-xs text-center capitalize truncate">{pokemon.species.name}</p>
                 {pokemon.isShiny && <span className="text-xs">✨</span>}
               </button>
             ))}
           </div>
+          {allPokemon.length === 0 && matchingPokemon.length === 0 && (
+            <p className="text-gray-500 text-sm text-center py-4">No Pokemon found</p>
+          )}
         </div>
 
         {/* Step 2: Request coins */}
