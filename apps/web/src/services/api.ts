@@ -513,11 +513,14 @@ class ApiClient {
           displayName: string;
           avatarUrl: string | null;
         };
-        offeredPokemon: {
+        offeredPokemon: Array<{
           id: string;
-          isShiny: boolean;
-          species: { name: string; spriteUrl: string };
-        };
+          pokemon: {
+            id: string;
+            isShiny: boolean;
+            species: { name: string; spriteUrl: string };
+          };
+        }>;
       }>;
       _count: { counterOffers: number };
     }>>('/want-listings/mine');
@@ -569,11 +572,14 @@ class ApiClient {
           displayName: string;
           avatarUrl: string | null;
         };
-        offeredPokemon: {
+        offeredPokemon: Array<{
           id: string;
-          isShiny: boolean;
-          species: { name: string; spriteUrl: string; spriteShinyUrl: string };
-        };
+          pokemon: {
+            id: string;
+            isShiny: boolean;
+            species: { name: string; spriteUrl: string; spriteShinyUrl: string };
+          };
+        }>;
         requestedPokemon: Array<{
           id: string;
           pokemon: {
@@ -641,7 +647,7 @@ class ApiClient {
   // Counter Offers
   async createCounterOffer(data: {
     wantListingId: string;
-    offeredPokemonId: string;
+    offeredPokemonIds: string[];
     coinsRequested: number;
     requestedPokemonIds: string[];
     message?: string;
@@ -659,11 +665,14 @@ class ApiClient {
       coinsRequested: number;
       message: string | null;
       createdAt: string;
-      offeredPokemon: {
+      offeredPokemon: Array<{
         id: string;
-        isShiny: boolean;
-        species: { name: string; spriteUrl: string };
-      };
+        pokemon: {
+          id: string;
+          isShiny: boolean;
+          species: { name: string; spriteUrl: string };
+        };
+      }>;
       requestedPokemon: Array<{
         id: string;
         pokemon: {

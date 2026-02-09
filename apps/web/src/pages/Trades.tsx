@@ -131,13 +131,11 @@ export default function Trades() {
             displayName: offer.wantListing.user.displayName,
             avatarUrl: offer.wantListing.user.avatarUrl,
           },
-          youGave: [
-            {
-              name: offer.offeredPokemon.species.name,
-              spriteUrl: offer.offeredPokemon.species.spriteUrl,
-              isShiny: offer.offeredPokemon.isShiny,
-            },
-          ],
+          youGave: offer.offeredPokemon.map((op) => ({
+            name: op.pokemon.species.name,
+            spriteUrl: op.pokemon.species.spriteUrl,
+            isShiny: op.pokemon.isShiny,
+          })),
           youReceived: offer.requestedPokemon.map((rp) => ({
             name: rp.pokemon.species.name,
             spriteUrl: rp.pokemon.species.spriteUrl,
@@ -157,13 +155,11 @@ export default function Trades() {
             displayName: offer.wantListing.user.displayName,
             avatarUrl: offer.wantListing.user.avatarUrl,
           },
-          youGave: [
-            {
-              name: offer.offeredPokemon.species.name,
-              spriteUrl: offer.offeredPokemon.species.spriteUrl,
-              isShiny: offer.offeredPokemon.isShiny,
-            },
-          ],
+          youGave: offer.offeredPokemon.map((op) => ({
+            name: op.pokemon.species.name,
+            spriteUrl: op.pokemon.species.spriteUrl,
+            isShiny: op.pokemon.isShiny,
+          })),
           youReceived: offer.requestedPokemon.map((rp) => ({
             name: rp.pokemon.species.name,
             spriteUrl: rp.pokemon.species.spriteUrl,
@@ -183,13 +179,11 @@ export default function Trades() {
             displayName: offer.wantListing.user.displayName,
             avatarUrl: offer.wantListing.user.avatarUrl,
           },
-          youGave: [
-            {
-              name: offer.offeredPokemon.species.name,
-              spriteUrl: offer.offeredPokemon.species.spriteUrl,
-              isShiny: offer.offeredPokemon.isShiny,
-            },
-          ],
+          youGave: offer.offeredPokemon.map((op) => ({
+            name: op.pokemon.species.name,
+            spriteUrl: op.pokemon.species.spriteUrl,
+            isShiny: op.pokemon.isShiny,
+          })),
           youReceived: [],
           coinsGave: 0,
           coinsReceived: 0,

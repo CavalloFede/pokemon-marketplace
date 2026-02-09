@@ -4,7 +4,7 @@ import { counterOfferService } from '../services/counter-offer.service.js';
 
 interface CreateCounterOfferBody {
   wantListingId: string;
-  offeredPokemonId: string;
+  offeredPokemonIds: string[];
   coinsRequested: number;
   requestedPokemonIds: string[];
   message?: string;

@@ -380,7 +380,7 @@ export function useCreateCounterOffer() {
   return useMutation({
     mutationFn: (data: {
       wantListingId: string;
-      offeredPokemonId: string;
+      offeredPokemonIds: string[];
       coinsRequested: number;
       requestedPokemonIds: string[];
       message?: string;

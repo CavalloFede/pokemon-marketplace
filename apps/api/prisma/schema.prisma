@@ -159,7 +159,8 @@ model UserPokemon {
 
   // Trading relations
   wantListingOffers    WantListingPokemon[]
-  counterOffersAsOffer CounterOffer[]                   @relation("CounterOfferPokemon")
+  counterOffersAsOfferLegacy CounterOffer[]               @relation("CounterOfferPokemon")
+  counterOffersAsOffer CounterOfferOfferedPokemon[]      @relation("CounterOfferOfferedPokemonRel")
   counterOfferRequests CounterOfferRequestedPokemon[]
 
   @@unique([userId, teamPosition])
@@ -291,8 +292,8 @@ model CounterOffer {
   wantListingId    String             @map("want_listing_id")
   userId           String             @map("user_id")
 
-  // What they're offering (the wanted Pokemon)
-  offeredPokemonId String             @map("offered_pokemon_id")
+  // Legacy single offered Pokemon (nullable for backward compat)
+  offeredPokemonId String?            @map("offered_pokemon_id")
 
   // What they want in return
   coinsRequested   Int                @default(0) @map("coins_requested")
@@ -310,7 +311,8 @@ model CounterOffer {
   // Relations
   wantListing      WantListing        @relation(fields: [wantListingId], references: [id], onDelete: Cascade)
   user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  offeredPokemon   UserPokemon        @relation("CounterOfferPokemon", fields: [offeredPokemonId], references: [id])
+  offeredPokemonLegacy UserPokemon?   @relation("CounterOfferPokemon", fields: [offeredPokemonId], references: [id])
+  offeredPokemon   CounterOfferOfferedPokemon[]
   requestedPokemon CounterOfferRequestedPokemon[]
 
   @@index([wantListingId])
@@ -330,4 +332,17 @@ model CounterOfferRequestedPokemon {
 
   @@unique([counterOfferId, pokemonId])
   @@map("counter_offer_requested_pokemon")
+}
+
+model CounterOfferOfferedPokemon {
+  id             String       @id @default(uuid())
+  counterOfferId String       @map("counter_offer_id")
+  pokemonId      String       @map("pokemon_id")
+
+  // Relations
+  counterOffer   CounterOffer @relation(fields: [counterOfferId], references: [id], onDelete: Cascade)
+  pokemon        UserPokemon  @relation("CounterOfferOfferedPokemonRel", fields: [pokemonId], references: [id])
+
+  @@unique([counterOfferId, pokemonId])
+  @@map("counter_offer_offered_pokemon")
 }

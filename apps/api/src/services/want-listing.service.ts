@@ -209,7 +209,11 @@ export class WantListingService {
               select: { id: true, displayName: true, avatarUrl: true }
             },
             offeredPokemon: {
-              include: { species: true }
+              include: {
+                pokemon: {
+                  include: { species: true }
+                }
+              }
             }
           }
         },
@@ -245,7 +249,11 @@ export class WantListingService {
               select: { id: true, displayName: true, avatarUrl: true }
             },
             offeredPokemon: {
-              include: { species: true }
+              include: {
+                pokemon: {
+                  include: { species: true }
+                }
+              }
             },
             requestedPokemon: {
               include: {

@@ -3,7 +3,7 @@ import { ObtainedMethod, CoinTransactionType } from '@prisma/client';
 
 interface CreateCounterOfferData {
   wantListingId: string;
-  offeredPokemonId: string;
+  offeredPokemonIds: string[];
   coinsRequested: number;
   requestedPokemonIds: string[];
   message?: string;
@@ -34,28 +34,25 @@ export class CounterOfferService {
       throw new Error('Cannot make counter-offer on your own listing');
     }
 
-    // Validate user owns the offered Pokemon
-    const offeredPokemon = await prisma.userPokemon.findUnique({
-      where: { id: data.offeredPokemonId },
+    // Validate offered Pokemon
+    if (data.offeredPokemonIds.length === 0) {
+      throw new Error('Must offer at least one Pokemon');
+    }
+
+    // Validate user owns all offered Pokemon
+    const offeredPokemonList = await prisma.userPokemon.findMany({
+      where: { id: { in: data.offeredPokemonIds } },
       include: { species: true }
     });
 
-    if (!offeredPokemon) {
-      throw new Error('Offered Pokemon not found');
+    if (offeredPokemonList.length !== data.offeredPokemonIds.length) {
+      throw new Error('One or more offered Pokemon not found');
     }
 
-    if (offeredPokemon.userId !== userId) {
-      throw new Error('You do not own this Pokemon');
-    }
-
-    // Validate Pokemon matches wanted species
-    if (offeredPokemon.speciesId !== listing.wantedSpeciesId) {
-      throw new Error('Pokemon does not match wanted species');
-    }
-
-    // Validate shiny if required
-    if (listing.wantShiny && !offeredPokemon.isShiny) {
-      throw new Error('Listing requires a shiny Pokemon');
+    for (const pokemon of offeredPokemonList) {
+      if (pokemon.userId !== userId) {
+        throw new Error('You do not own one of the offered Pokemon');
+      }
     }
 
     // Check if user already has pending counter-offer on this listing
@@ -93,9 +90,11 @@ export class CounterOfferService {
       data: {
         wantListingId: data.wantListingId,
         userId,
-        offeredPokemonId: data.offeredPokemonId,
         coinsRequested: data.coinsRequested,
         message: data.message,
+        offeredPokemon: {
+          create: data.offeredPokemonIds.map(pokemonId => ({ pokemonId }))
+        },
         requestedPokemon: {
           create: data.requestedPokemonIds.map(pokemonId => ({ pokemonId }))
         }
@@ -105,7 +104,11 @@ export class CounterOfferService {
           select: { id: true, displayName: true, avatarUrl: true }
         },
         offeredPokemon: {
-          include: { species: true }
+          include: {
+            pokemon: {
+              include: { species: true }
+            }
+          }
         },
         requestedPokemon: {
           include: {
@@ -138,7 +141,11 @@ export class CounterOfferService {
         include: {
           user: true,
           offeredPokemon: {
-            include: { species: true }
+            include: {
+              pokemon: {
+                include: { species: true }
+              }
+            }
           },
           requestedPokemon: {
             include: {
@@ -174,13 +181,14 @@ export class CounterOfferService {
         throw new Error('Listing is no longer open');
       }
 
-      // Validate counter-offerer still owns the Pokemon
-      const offeredPokemon = await tx.userPokemon.findUnique({
-        where: { id: counterOffer.offeredPokemonId }
-      });
-
-      if (!offeredPokemon || offeredPokemon.userId !== counterOffer.userId) {
-        throw new Error('Counter-offerer no longer owns the Pokemon');
+      // Validate counter-offerer still owns all offered Pokemon
+      for (const offered of counterOffer.offeredPokemon) {
+        const pokemon = await tx.userPokemon.findUnique({
+          where: { id: offered.pokemonId }
+        });
+        if (!pokemon || pokemon.userId !== counterOffer.userId) {
+          throw new Error('Counter-offerer no longer owns one of the offered Pokemon');
+        }
       }
 
       // Validate listing owner has enough coins if requested
@@ -192,18 +200,20 @@ export class CounterOfferService {
 
       // Execute trade
 
-      // 1. Transfer the offered Pokemon to listing owner (the wanted Pokemon)
-      await tx.userPokemon.update({
-        where: { id: counterOffer.offeredPokemonId },
-        data: {
-          userId: counterOffer.wantListing.userId,
-          obtainedMethod: ObtainedMethod.trade,
-          obtainedAt: new Date(),
-          isInTeam: false,
-          teamPosition: null,
-          isFavorite: false
-        }
-      });
+      // 1. Transfer all offered Pokemon to listing owner
+      for (const offered of counterOffer.offeredPokemon) {
+        await tx.userPokemon.update({
+          where: { id: offered.pokemonId },
+          data: {
+            userId: counterOffer.wantListing.userId,
+            obtainedMethod: ObtainedMethod.trade,
+            obtainedAt: new Date(),
+            isInTeam: false,
+            teamPosition: null,
+            isFavorite: false
+          }
+        });
+      }
 
       // 2. Transfer requested Pokemon to counter-offerer
       for (const requested of counterOffer.requestedPokemon) {
@@ -255,7 +265,9 @@ export class CounterOfferService {
       }
 
       // 4. Update Pokedex entries
-      await this.updatePokedex(tx, counterOffer.wantListing.userId, counterOffer.offeredPokemon.speciesId);
+      for (const offered of counterOffer.offeredPokemon) {
+        await this.updatePokedex(tx, counterOffer.wantListing.userId, offered.pokemon.speciesId);
+      }
       for (const requested of counterOffer.requestedPokemon) {
         await this.updatePokedex(tx, counterOffer.userId, requested.pokemon.speciesId);
       }
@@ -285,7 +297,7 @@ export class CounterOfferService {
       return {
         success: true,
         counterOffer,
-        tradedPokemon: counterOffer.offeredPokemon,
+        tradedPokemon: counterOffer.offeredPokemon.map(p => p.pokemon),
         receivedPokemon: counterOffer.requestedPokemon.map(p => p.pokemon),
         coinsReceived: counterOffer.coinsRequested
       };
@@ -358,7 +370,11 @@ export class CounterOfferService {
           select: { id: true, displayName: true, avatarUrl: true }
         },
         offeredPokemon: {
-          include: { species: true }
+          include: {
+            pokemon: {
+              include: { species: true }
+            }
+          }
         },
         requestedPokemon: {
           include: {
@@ -380,7 +396,11 @@ export class CounterOfferService {
       where: { userId },
       include: {
         offeredPokemon: {
-          include: { species: true }
+          include: {
+            pokemon: {
+              include: { species: true }
+            }
+          }
         },
         requestedPokemon: {
           include: {
@@ -413,7 +433,11 @@ export class CounterOfferService {
           select: { id: true, displayName: true, avatarUrl: true }
         },
         offeredPokemon: {
-          include: { species: true }
+          include: {
+            pokemon: {
+              include: { species: true }
+            }
+          }
         },
         requestedPokemon: {
           include: {

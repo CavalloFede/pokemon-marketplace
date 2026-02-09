@@ -259,23 +259,27 @@ export default function WantListingDetail() {
                     </div>
 
                     {/* What they're offering */}
-                    <div className="flex items-center gap-2 bg-gray-700 px-3 py-2 rounded">
-                      <img
-                        src={offer.offeredPokemon.isShiny
-                          ? offer.offeredPokemon.species.spriteShinyUrl
-                          : offer.offeredPokemon.species.spriteUrl
-                        }
-                        alt={offer.offeredPokemon.species.name}
-                        className="w-10 h-10 pixelated"
-                      />
-                      <div>
-                        <p className="text-sm font-medium capitalize">
-                          {offer.offeredPokemon.species.name}
-                        </p>
-                        {offer.offeredPokemon.isShiny && (
-                          <span className="text-xs text-yellow-400">✨ Shiny</span>
-                        )}
-                      </div>
+                    <div className="flex items-center gap-1 bg-gray-700 px-3 py-2 rounded">
+                      {offer.offeredPokemon.map((op: any) => (
+                        <div key={op.id} className="flex items-center gap-1">
+                          <img
+                            src={op.pokemon.isShiny
+                              ? op.pokemon.species.spriteShinyUrl
+                              : op.pokemon.species.spriteUrl
+                            }
+                            alt={op.pokemon.species.name}
+                            className="w-10 h-10 pixelated"
+                          />
+                          <div>
+                            <p className="text-sm font-medium capitalize">
+                              {op.pokemon.species.name}
+                            </p>
+                            {op.pokemon.isShiny && (
+                              <span className="text-xs text-yellow-400">✨</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
 
                     {/* What they want */}
@@ -413,14 +417,25 @@ function CounterOfferModal({ listing, matchingPokemon, onClose }: CounterOfferMo
   const { data: collectionData } = usePokemon({ search: pokemonSearch || undefined, limit: 50 });
   const allPokemon = collectionData?.pokemon ?? [];
 
-  const [selectedPokemonId, setSelectedPokemonId] = useState<string | null>(null);
+  const [selectedPokemonIds, setSelectedPokemonIds] = useState<string[]>([]);
   const [coinsRequested, setCoinsRequested] = useState(listing.coinsOffered);
-  const [requestedPokemonIds, setRequestedPokemonIds] = useState<string[]>([]);
+  // Auto-select all offered Pokemon from the listing
+  const [requestedPokemonIds, setRequestedPokemonIds] = useState<string[]>(
+    listing.offeredPokemon.map((op: any) => op.pokemon.id)
+  );
   const [message, setMessage] = useState('');
 
+  const toggleOfferedPokemon = (id: string) => {
+    setSelectedPokemonIds(prev =>
+      prev.includes(id)
+        ? prev.filter(p => p !== id)
+        : [...prev, id]
+    );
+  };
+
   const handleSubmit = async () => {
-    if (!selectedPokemonId) {
-      alert('Please select a Pokemon to offer');
+    if (selectedPokemonIds.length === 0) {
+      alert('Please select at least one Pokemon to offer');
       return;
     }
 
@@ -432,7 +447,7 @@ function CounterOfferModal({ listing, matchingPokemon, onClose }: CounterOfferMo
     try {
       await createCounterOffer.mutateAsync({
         wantListingId: listing.id,
-        offeredPokemonId: selectedPokemonId,
+        offeredPokemonIds: selectedPokemonIds,
         coinsRequested,
         requestedPokemonIds,
         message: message || undefined
@@ -466,10 +481,10 @@ function CounterOfferModal({ listing, matchingPokemon, onClose }: CounterOfferMo
           Offer a different deal to {listing.user.displayName}
         </p>
 
-        {/* Step 1: Select your Pokemon */}
+        {/* Step 1: Select Pokemon to offer */}
         <div className="mb-6">
           <h3 className="font-medium mb-2">
-            1. Select a Pokemon to offer
+            1. Select Pokemon to offer ({selectedPokemonIds.length} selected)
           </h3>
           <input
             type="text"
@@ -488,9 +503,9 @@ function CounterOfferModal({ listing, matchingPokemon, onClose }: CounterOfferMo
             {!pokemonSearch && matchingPokemon.map((pokemon) => (
               <button
                 key={pokemon.id}
-                onClick={() => setSelectedPokemonId(pokemon.id)}
+                onClick={() => toggleOfferedPokemon(pokemon.id)}
                 className={`p-2 rounded transition-colors ring-2 ring-green-500/50 ${
-                  selectedPokemonId === pokemon.id
+                  selectedPokemonIds.includes(pokemon.id)
                     ? 'bg-pokemon-electric text-gray-900'
                     : 'bg-gray-700 hover:bg-gray-600'
                 }`}
@@ -513,9 +528,9 @@ function CounterOfferModal({ listing, matchingPokemon, onClose }: CounterOfferMo
               .map((pokemon) => (
               <button
                 key={pokemon.id}
-                onClick={() => setSelectedPokemonId(pokemon.id)}
+                onClick={() => toggleOfferedPokemon(pokemon.id)}
                 className={`p-2 rounded transition-colors ${
-                  selectedPokemonId === pokemon.id
+                  selectedPokemonIds.includes(pokemon.id)
                     ? 'bg-pokemon-electric text-gray-900'
                     : 'bg-gray-700 hover:bg-gray-600'
                 }`}
@@ -553,12 +568,13 @@ function CounterOfferModal({ listing, matchingPokemon, onClose }: CounterOfferMo
           />
         </div>
 
-        {/* Step 3: Request Pokemon */}
+        {/* Step 3: Request Pokemon (auto-selected, can deselect) */}
         {listing.offeredPokemon.length > 0 && (
           <div className="mb-6">
             <h3 className="font-medium mb-2">
-              3. Request Pokemon from their offer ({requestedPokemonIds.length} selected)
+              3. Pokemon you'll receive ({requestedPokemonIds.length}/{listing.offeredPokemon.length})
             </h3>
+            <p className="text-xs text-gray-400 mb-2">All selected by default. Tap to deselect.</p>
             <div className="grid grid-cols-4 gap-2">
               {listing.offeredPokemon.map((op: any) => (
                 <button
@@ -567,7 +583,7 @@ function CounterOfferModal({ listing, matchingPokemon, onClose }: CounterOfferMo
                   className={`p-2 rounded transition-colors ${
                     requestedPokemonIds.includes(op.pokemon.id)
                       ? 'bg-purple-500 text-white'
-                      : 'bg-gray-700 hover:bg-gray-600'
+                      : 'bg-gray-700 hover:bg-gray-600 opacity-50'
                   }`}
                 >
                   <img
@@ -604,7 +620,7 @@ function CounterOfferModal({ listing, matchingPokemon, onClose }: CounterOfferMo
         <div className="mb-6 p-4 bg-gray-700/50 rounded-lg">
           <h3 className="font-medium mb-2">Summary</h3>
           <p className="text-sm text-gray-400">
-            You offer: {selectedPokemonId ? '1 Pokemon' : 'No Pokemon selected'}
+            You offer: {selectedPokemonIds.length > 0 ? `${selectedPokemonIds.length} Pokemon` : 'No Pokemon selected'}
           </p>
           <p className="text-sm text-gray-400">
             You request: {coinsRequested > 0 ? `${coinsRequested} coins` : ''}
@@ -624,7 +640,7 @@ function CounterOfferModal({ listing, matchingPokemon, onClose }: CounterOfferMo
           </button>
           <button
             onClick={handleSubmit}
-            disabled={createCounterOffer.isPending || !selectedPokemonId}
+            disabled={createCounterOffer.isPending || selectedPokemonIds.length === 0}
             className="btn bg-purple-500 hover:bg-purple-600 flex-1 disabled:opacity-50"
           >
             {createCounterOffer.isPending ? 'Sending...' : 'Send Counter-Offer'}

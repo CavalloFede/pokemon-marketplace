@@ -194,13 +194,18 @@ export default function MyWantListings() {
                           className="flex items-center justify-between bg-gray-700/50 p-3 rounded"
                         >
                           <div className="flex items-center gap-3">
-                            <img
-                              src={offer.offeredPokemon.species.spriteUrl}
-                              alt={offer.offeredPokemon.species.name}
-                              className="w-10 h-10 pixelated"
-                              loading="lazy"
-                              decoding="async"
-                            />
+                            <div className="flex -space-x-2">
+                              {offer.offeredPokemon.map((op: any) => (
+                                <img
+                                  key={op.id}
+                                  src={op.pokemon.species.spriteUrl}
+                                  alt={op.pokemon.species.name}
+                                  className="w-10 h-10 pixelated"
+                                  loading="lazy"
+                                  decoding="async"
+                                />
+                              ))}
+                            </div>
                             <div>
                               <p className="font-medium">{offer.user.displayName}</p>
                               <p className="text-sm text-gray-400">
@@ -265,7 +270,7 @@ export default function MyWantListings() {
                         {offer.wantListing.wantedSpecies.name}
                       </h3>
                       <p className="text-sm text-gray-400">
-                        You offered: {offer.offeredPokemon.species.name}
+                        You offered: {offer.offeredPokemon.map((op: any) => op.pokemon.species.name).join(', ')}
                         {offer.coinsRequested > 0 ? ` (asking ${offer.coinsRequested} coins)` : ''}
                       </p>
                     </div>
