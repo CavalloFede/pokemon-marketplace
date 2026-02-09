@@ -119,6 +119,8 @@ export default function UserProfile() {
                         src={pokemon.isShiny ? pokemon.species.spriteShinyUrl : pokemon.species.spriteUrl}
                         alt={pokemon.species.name}
                         className="w-16 h-16 pixelated"
+                        loading="lazy"
+                        decoding="async"
                       />
                       <span className="text-sm text-center mt-1 capitalize">
                         {pokemon.isShiny && <span className="text-yellow-400">✨</span>}

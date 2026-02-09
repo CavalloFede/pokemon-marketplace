@@ -126,6 +126,8 @@ export default function Evolution() {
                       src={pokemon.isShiny ? pokemon.currentSpecies.spriteShinyUrl : pokemon.currentSpecies.spriteUrl}
                       alt={pokemon.currentSpecies.name}
                       className="w-16 h-16 pixelated mx-auto"
+                      loading="lazy"
+                      decoding="async"
                     />
                   </div>
                   <p className="text-sm capitalize font-medium">
@@ -146,6 +148,8 @@ export default function Evolution() {
                       src={pokemon.isShiny ? pokemon.targetSpecies.spriteShinyUrl : pokemon.targetSpecies.spriteUrl}
                       alt={pokemon.targetSpecies.name}
                       className="w-16 h-16 pixelated mx-auto"
+                      loading="lazy"
+                      decoding="async"
                     />
                   </div>
                   <p className="text-sm capitalize font-medium">

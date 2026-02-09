@@ -145,6 +145,8 @@ export default function MyWantListings() {
                       }
                       alt={listing.wantedSpecies.name}
                       className="w-16 h-16 pixelated"
+                      loading="lazy"
+                      decoding="async"
                     />
                     <div>
                       <h3 className="font-bold capitalize flex items-center gap-2">
@@ -196,6 +198,8 @@ export default function MyWantListings() {
                               src={offer.offeredPokemon.species.spriteUrl}
                               alt={offer.offeredPokemon.species.name}
                               className="w-10 h-10 pixelated"
+                              loading="lazy"
+                              decoding="async"
                             />
                             <div>
                               <p className="font-medium">{offer.user.displayName}</p>
@@ -250,6 +254,8 @@ export default function MyWantListings() {
                       src={offer.wantListing.wantedSpecies.spriteUrl}
                       alt={offer.wantListing.wantedSpecies.name}
                       className="w-12 h-12 pixelated"
+                      loading="lazy"
+                      decoding="async"
                     />
                     <div>
                       <p className="text-sm text-gray-400">
@@ -382,6 +388,8 @@ function CreateListingModal({ onClose }: { onClose: () => void }) {
                   src={species.spriteUrl}
                   alt={species.name}
                   className="w-8 h-8 mx-auto pixelated"
+                  loading="lazy"
+                  decoding="async"
                 />
                 <p className="text-xs text-center capitalize truncate">{species.name}</p>
               </button>
@@ -434,6 +442,8 @@ function CreateListingModal({ onClose }: { onClose: () => void }) {
                   src={p.isShiny ? p.species.spriteShinyUrl : p.species.spriteUrl}
                   alt={p.species.name}
                   className="w-8 h-8 mx-auto pixelated"
+                  loading="lazy"
+                  decoding="async"
                 />
                 <p className="text-xs text-center capitalize truncate">{p.species.name}</p>
                 {p.isShiny && <span className="text-xs">✨</span>}

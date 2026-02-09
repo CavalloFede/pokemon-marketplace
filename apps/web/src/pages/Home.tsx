@@ -136,6 +136,8 @@ export default function Home() {
                   src={p.currentSpecies.spriteUrl}
                   alt={p.currentSpecies.name}
                   className="w-10 h-10 rounded-full bg-gray-700 border-2 border-gray-800"
+                  loading="lazy"
+                  decoding="async"
                 />
               ))}
               {evolutionReady.length > 3 && (

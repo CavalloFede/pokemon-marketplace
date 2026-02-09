@@ -102,6 +102,8 @@ export default function Profile() {
                         }
                         alt={pokemon.species.name}
                         className="w-16 h-16 pixelated"
+                        loading="lazy"
+                        decoding="async"
                       />
                     ) : (
                       <span className="text-4xl">?</span>

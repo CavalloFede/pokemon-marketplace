@@ -10,6 +10,9 @@
       "includeFiles": "apps/api/dist/**,node_modules/.prisma/**"
     }
   },
+  "crons": [
+    { "path": "/api/cron/rotate-shop", "schedule": "0 * * * *" }
+  ],
   "rewrites": [
     { "source": "/api/pokemon", "destination": "/api/pokemon/__root" },
     { "source": "/api/pokemon/:id/sell", "destination": "/api/pokemon/:id?action=sell" },

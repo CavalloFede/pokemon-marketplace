@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { usePokemon, useTeam, useUpdateTeam, useEvolutionReady, useSetNickname } from '../hooks/useApi';
 
@@ -71,15 +71,21 @@ interface TeamPokemon {
 
 export default function Collection() {
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [rarity, setRarity] = useState('');
   const [selectedPokemon, setSelectedPokemon] = useState<CollectionPokemon | null>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [nicknameInput, setNicknameInput] = useState('');
   const [nicknameError, setNicknameError] = useState('');
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const { data: pokemonData, isLoading } = usePokemon({
     rarity: rarity || undefined,
-    search: search || undefined,
+    search: debouncedSearch || undefined,
     limit: 100,
   });
   const { data: teamData } = useTeam();
@@ -227,6 +233,8 @@ export default function Collection() {
                     src={p.isShiny ? p.species.spriteShinyUrl : p.species.spriteUrl}
                     alt={p.species.name}
                     className="w-full h-full object-contain pixelated"
+                    loading="lazy"
+                    decoding="async"
                   />
                 ) : (
                   <span className="text-3xl">?</span>

@@ -229,4 +229,56 @@ export class ShopService {
   }
 }
 
+  /**
+   * Rotate featured Pokemon in the shop
+   * Deactivates current pokemon items and creates 6 new random ones
+   */
+  async rotateShopItems() {
+    // Deactivate all current pokemon items
+    await prisma.shopItem.updateMany({
+      where: { itemType: 'pokemon', isActive: true },
+      data: { isActive: false },
+    });
+
+    // Pick 6 random species spread across rarities
+    // 2 common/uncommon, 2 rare/epic, 1 legendary, 1 mythical
+    const rarityBuckets: { rarities: PokemonRarity[]; count: number }[] = [
+      { rarities: [PokemonRarity.COMMON, PokemonRarity.UNCOMMON], count: 2 },
+      { rarities: [PokemonRarity.RARE, PokemonRarity.EPIC], count: 2 },
+      { rarities: [PokemonRarity.LEGENDARY], count: 1 },
+      { rarities: [PokemonRarity.MYTHICAL], count: 1 },
+    ];
+
+    const newItems: { speciesId: number; price: number }[] = [];
+
+    for (const bucket of rarityBuckets) {
+      const species = await prisma.pokemonSpecies.findMany({
+        where: { rarity: { in: bucket.rarities } },
+        select: { id: true, basePrice: true },
+      });
+
+      // Shuffle and pick
+      const shuffled = species.sort(() => Math.random() - 0.5);
+      const picked = shuffled.slice(0, bucket.count);
+
+      for (const s of picked) {
+        newItems.push({ speciesId: s.id, price: s.basePrice });
+      }
+    }
+
+    // Create new shop items
+    await prisma.shopItem.createMany({
+      data: newItems.map((item) => ({
+        itemType: 'pokemon' as const,
+        speciesId: item.speciesId,
+        price: item.price,
+        stock: 5,
+        isActive: true,
+      })),
+    });
+
+    return { rotated: newItems.length };
+  }
+}
+
 export const shopService = new ShopService();

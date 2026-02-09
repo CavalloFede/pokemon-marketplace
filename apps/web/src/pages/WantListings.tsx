@@ -68,6 +68,8 @@ export default function WantListings() {
                     }
                     alt={listing.wantedSpecies.name}
                     className="w-20 h-20 pixelated"
+                    loading="lazy"
+                    decoding="async"
                   />
                   {listing.wantShiny && (
                     <span className="absolute -top-1 -right-1 text-lg">✨</span>
@@ -105,6 +107,8 @@ export default function WantListings() {
                         }
                         alt={op.pokemon.species.name}
                         className="w-6 h-6 pixelated"
+                        loading="lazy"
+                        decoding="async"
                       />
                       <span className="text-xs capitalize">{op.pokemon.species.name}</span>
                       {op.pokemon.isShiny && <span className="text-xs">✨</span>}

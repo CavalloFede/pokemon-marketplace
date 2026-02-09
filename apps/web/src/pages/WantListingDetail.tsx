@@ -56,6 +56,7 @@ export default function WantListingDetail() {
     try {
       await acceptCounterOffer.mutateAsync(offerId);
       alert('Counter-offer accepted! Trade completed.');
+      navigate('/want-listings');
     } catch (error: any) {
       alert(error.message || 'Failed to accept counter-offer');
     }
@@ -174,6 +175,8 @@ export default function WantListingDetail() {
                   }
                   alt={op.pokemon.species.name}
                   className="w-16 h-16 pixelated"
+                  loading="lazy"
+                  decoding="async"
                 />
                 <div>
                   <p className="font-bold capitalize">{op.pokemon.species.name}</p>
@@ -407,7 +410,7 @@ function CounterOfferModal({ listing, matchingPokemon, onClose }: CounterOfferMo
   const createCounterOffer = useCreateCounterOffer();
 
   const [selectedPokemonId, setSelectedPokemonId] = useState<string | null>(null);
-  const [coinsRequested, setCoinsRequested] = useState(0);
+  const [coinsRequested, setCoinsRequested] = useState(listing.coinsOffered);
   const [requestedPokemonIds, setRequestedPokemonIds] = useState<string[]>([]);
   const [message, setMessage] = useState('');
 

@@ -157,6 +157,8 @@ export default function Trades() {
                               src={p.species.spriteUrl}
                               alt={p.species.name}
                               className="w-10 h-10 pixelated"
+                              loading="lazy"
+                              decoding="async"
                             />
                           ) : (
                             <span>?</span>
@@ -185,6 +187,8 @@ export default function Trades() {
                               src={p.species.spriteUrl}
                               alt={p.species.name}
                               className="w-10 h-10 pixelated"
+                              loading="lazy"
+                              decoding="async"
                             />
                           ) : (
                             <span>?</span>
@@ -282,6 +286,8 @@ export default function Trades() {
                           src={p.species.spriteUrl}
                           alt={p.species.name}
                           className="w-10 h-10 pixelated"
+                          loading="lazy"
+                          decoding="async"
                         />
                       ) : (
                         <span className="w-10 h-10 flex items-center justify-center">?</span>
@@ -306,6 +312,8 @@ export default function Trades() {
                           src={p.species.spriteUrl}
                           alt={p.species.name}
                           className="w-10 h-10 pixelated"
+                          loading="lazy"
+                          decoding="async"
                         />
                       ) : (
                         <span className="w-10 h-10 flex items-center justify-center">?</span>

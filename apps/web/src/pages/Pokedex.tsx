@@ -161,6 +161,8 @@ export default function Pokedex() {
                       src={entry.species.spriteUrl}
                       alt={entry.species.name}
                       className="w-10 h-10 pixelated"
+                      loading="lazy"
+                      decoding="async"
                     />
                   ) : (
                     <span className="text-xl">?</span>

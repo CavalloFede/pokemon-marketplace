@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useShopItems, usePurchase } from '../hooks/useApi';
 import { useAuthStore } from '../store/authStore';
 
@@ -48,6 +48,17 @@ export default function Shop() {
 
   const eggItems = shopItems?.filter((item: any) => item.itemType === 'egg') ?? [];
   const pokemonItems = shopItems?.filter((item: any) => item.itemType === 'pokemon') ?? [];
+
+  const [minutesUntilRefresh, setMinutesUntilRefresh] = useState(() => {
+    return 60 - new Date().getMinutes();
+  });
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMinutesUntilRefresh(60 - new Date().getMinutes());
+    }, 30000); // update every 30s
+    return () => clearInterval(interval);
+  }, []);
 
   const handlePurchase = async (itemId: string) => {
     if (purchase.isPending) return;
@@ -140,7 +151,12 @@ export default function Shop() {
       {/* Featured Pokemon */}
       {pokemonItems.length > 0 && (
         <section>
-          <h2 className="text-2xl font-bold mb-4">Featured Pokemon</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold">Featured Pokemon</h2>
+            <span className="text-sm text-gray-400">
+              Refreshes in {minutesUntilRefresh}m
+            </span>
+          </div>
           <p className="text-gray-400 mb-4">
             Buy specific Pokemon directly! Limited stock available.
           </p>
@@ -161,6 +177,8 @@ export default function Shop() {
                         src={species.spriteUrl}
                         alt={species.name}
                         className="w-20 h-20 pixelated"
+                        loading="lazy"
+                        decoding="async"
                       />
                     ) : (
                       <span className="text-4xl">?</span>

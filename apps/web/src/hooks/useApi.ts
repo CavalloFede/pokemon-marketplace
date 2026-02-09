@@ -412,6 +412,7 @@ export function useRejectCounterOffer() {
   return useMutation({
     mutationFn: (id: string) => api.rejectCounterOffer(id),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.wantListings });
       queryClient.invalidateQueries({ queryKey: queryKeys.myWantListings });
       queryClient.invalidateQueries({ queryKey: queryKeys.myCounterOffers });
     },
