@@ -83,7 +83,7 @@ export default function Collection() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const { data: pokemonData, isLoading } = usePokemon({
+  const { data: pokemonData, isLoading, isFetching } = usePokemon({
     rarity: rarity || undefined,
     search: debouncedSearch || undefined,
     limit: 100,
@@ -158,7 +158,10 @@ export default function Collection() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">My Collection</h1>
-          <p className="text-gray-400">{total} Pokemon</p>
+          <p className="text-gray-400">
+            {total} Pokemon
+            {isFetching && !isLoading && <span className="ml-2 text-pokemon-electric animate-pulse">updating...</span>}
+          </p>
         </div>
         <div className="flex gap-2">
           <input
