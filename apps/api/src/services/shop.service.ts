@@ -227,7 +227,6 @@ export class ShopService {
       rarity
     };
   }
-}
 
   /**
    * Rotate featured Pokemon in the shop
