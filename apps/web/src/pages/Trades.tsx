@@ -1,85 +1,221 @@
-import { useState } from 'react';
-import { useTrades, useAcceptTrade, useRejectTrade, useCancelTrade } from '../hooks/useApi';
+import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { useMyWantListings, useMyCounterOffers } from '../hooks/useApi';
 import { useAuthStore } from '../store/authStore';
 
-type TradeStatus = 'all' | 'pending' | 'accepted' | 'rejected' | 'expired';
-
-interface TradePokemon {
-  species: {
-    name: string;
-    spriteUrl: string;
-  };
-}
-
-interface Trade {
-  id: string;
-  status: string;
-  coinsOffered: number;
-  expiresAt: string;
-  createdAt: string;
-  initiator: {
-    id: string;
-    displayName: string;
-  };
-  receiver: {
-    id: string;
-    displayName: string;
-  };
-  initiatorPokemon: TradePokemon[];
-  receiverPokemon: TradePokemon[];
-}
+type FilterTab = 'all' | 'completed' | 'pending';
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-yellow-500/20 text-yellow-400',
+  completed: 'bg-blue-500/20 text-blue-400',
   accepted: 'bg-green-500/20 text-green-400',
+  open: 'bg-yellow-500/20 text-yellow-400',
+  pending: 'bg-yellow-500/20 text-yellow-400',
+  cancelled: 'bg-gray-500/20 text-gray-400',
   rejected: 'bg-red-500/20 text-red-400',
-  expired: 'bg-gray-500/20 text-gray-400',
+  withdrawn: 'bg-gray-500/20 text-gray-400',
+  expired: 'bg-red-500/20 text-red-400',
 };
+
+interface PokemonSprite {
+  name: string;
+  spriteUrl: string;
+  isShiny?: boolean;
+}
+
+interface TradeEntry {
+  id: string;
+  type: 'listing' | 'counter-offer';
+  status: string;
+  displayStatus: string;
+  otherTrader: { displayName: string; avatarUrl: string | null };
+  youGave: PokemonSprite[];
+  youReceived: PokemonSprite[];
+  coinsGave: number;
+  coinsReceived: number;
+  date: string;
+  listingId: string;
+}
 
 export default function Trades() {
   const { user } = useAuthStore();
-  const [statusFilter, setStatusFilter] = useState<TradeStatus>('all');
-  const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
+  const [filter, setFilter] = useState<FilterTab>('all');
 
-  const { data: trades, isLoading } = useTrades(
-    statusFilter !== 'all' ? { status: statusFilter } : undefined
-  );
-  const acceptTrade = useAcceptTrade();
-  const rejectTrade = useRejectTrade();
-  const cancelTrade = useCancelTrade();
+  const { data: listings, isLoading: listingsLoading } = useMyWantListings();
+  const { data: counterOffers, isLoading: offersLoading } = useMyCounterOffers();
 
-  const handleAccept = async (tradeId: string) => {
-    try {
-      await acceptTrade.mutateAsync(tradeId);
-      setSelectedTrade(null);
-    } catch (error: any) {
-      console.error('Failed to accept trade:', error);
-      alert(error.message || 'Failed to accept trade');
+  const isLoading = listingsLoading || offersLoading;
+
+  const trades = useMemo(() => {
+    if (!user) return [];
+    const entries: TradeEntry[] = [];
+
+    // From my want listings: completed = someone fulfilled my listing
+    for (const listing of listings ?? []) {
+      const acceptedOffer = listing.counterOffers?.find(
+        (o) => o.status === 'accepted'
+      );
+
+      if (listing.status === 'completed' && acceptedOffer) {
+        // Completed listing — I received what I wanted, gave my offered pokemon + coins
+        entries.push({
+          id: `listing-${listing.id}`,
+          type: 'listing',
+          status: 'completed',
+          displayStatus: 'Completed',
+          otherTrader: {
+            displayName: acceptedOffer.user.displayName,
+            avatarUrl: acceptedOffer.user.avatarUrl,
+          },
+          youReceived: [
+            {
+              name: listing.wantedSpecies.name,
+              spriteUrl: listing.wantShiny
+                ? listing.wantedSpecies.spriteShinyUrl
+                : listing.wantedSpecies.spriteUrl,
+              isShiny: listing.wantShiny,
+            },
+          ],
+          youGave: listing.offeredPokemon.map((op) => ({
+            name: op.pokemon.species.name,
+            spriteUrl: op.pokemon.isShiny
+              ? op.pokemon.species.spriteShinyUrl
+              : op.pokemon.species.spriteUrl,
+            isShiny: op.pokemon.isShiny,
+          })),
+          coinsGave: listing.coinsOffered,
+          coinsReceived: acceptedOffer.coinsRequested,
+          date: listing.createdAt,
+          listingId: listing.id,
+        });
+      } else if (listing.status === 'open') {
+        // Pending listing — still open
+        entries.push({
+          id: `listing-${listing.id}`,
+          type: 'listing',
+          status: 'open',
+          displayStatus: 'Open Listing',
+          otherTrader: { displayName: 'Waiting...', avatarUrl: null },
+          youReceived: [
+            {
+              name: listing.wantedSpecies.name,
+              spriteUrl: listing.wantShiny
+                ? listing.wantedSpecies.spriteShinyUrl
+                : listing.wantedSpecies.spriteUrl,
+              isShiny: listing.wantShiny,
+            },
+          ],
+          youGave: listing.offeredPokemon.map((op) => ({
+            name: op.pokemon.species.name,
+            spriteUrl: op.pokemon.isShiny
+              ? op.pokemon.species.spriteShinyUrl
+              : op.pokemon.species.spriteUrl,
+            isShiny: op.pokemon.isShiny,
+          })),
+          coinsGave: listing.coinsOffered,
+          coinsReceived: 0,
+          date: listing.createdAt,
+          listingId: listing.id,
+        });
+      }
     }
-  };
 
-  const handleReject = async (tradeId: string) => {
-    try {
-      await rejectTrade.mutateAsync(tradeId);
-      setSelectedTrade(null);
-    } catch (error: any) {
-      console.error('Failed to reject trade:', error);
-      alert(error.message || 'Failed to reject trade');
+    // From my counter-offers: accepted = my offer was accepted by listing owner
+    for (const offer of counterOffers ?? []) {
+      if (offer.status === 'accepted') {
+        entries.push({
+          id: `offer-${offer.id}`,
+          type: 'counter-offer',
+          status: 'accepted',
+          displayStatus: 'Completed',
+          otherTrader: {
+            displayName: offer.wantListing.user.displayName,
+            avatarUrl: offer.wantListing.user.avatarUrl,
+          },
+          youGave: [
+            {
+              name: offer.offeredPokemon.species.name,
+              spriteUrl: offer.offeredPokemon.species.spriteUrl,
+              isShiny: offer.offeredPokemon.isShiny,
+            },
+          ],
+          youReceived: offer.requestedPokemon.map((rp) => ({
+            name: rp.pokemon.species.name,
+            spriteUrl: rp.pokemon.species.spriteUrl,
+          })),
+          coinsGave: 0,
+          coinsReceived: offer.coinsRequested,
+          date: offer.createdAt,
+          listingId: offer.wantListing.id,
+        });
+      } else if (offer.status === 'pending') {
+        entries.push({
+          id: `offer-${offer.id}`,
+          type: 'counter-offer',
+          status: 'pending',
+          displayStatus: 'Pending Offer',
+          otherTrader: {
+            displayName: offer.wantListing.user.displayName,
+            avatarUrl: offer.wantListing.user.avatarUrl,
+          },
+          youGave: [
+            {
+              name: offer.offeredPokemon.species.name,
+              spriteUrl: offer.offeredPokemon.species.spriteUrl,
+              isShiny: offer.offeredPokemon.isShiny,
+            },
+          ],
+          youReceived: offer.requestedPokemon.map((rp) => ({
+            name: rp.pokemon.species.name,
+            spriteUrl: rp.pokemon.species.spriteUrl,
+          })),
+          coinsGave: 0,
+          coinsReceived: offer.coinsRequested,
+          date: offer.createdAt,
+          listingId: offer.wantListing.id,
+        });
+      } else if (offer.status === 'rejected') {
+        entries.push({
+          id: `offer-${offer.id}`,
+          type: 'counter-offer',
+          status: 'rejected',
+          displayStatus: 'Rejected',
+          otherTrader: {
+            displayName: offer.wantListing.user.displayName,
+            avatarUrl: offer.wantListing.user.avatarUrl,
+          },
+          youGave: [
+            {
+              name: offer.offeredPokemon.species.name,
+              spriteUrl: offer.offeredPokemon.species.spriteUrl,
+              isShiny: offer.offeredPokemon.isShiny,
+            },
+          ],
+          youReceived: [],
+          coinsGave: 0,
+          coinsReceived: 0,
+          date: offer.createdAt,
+          listingId: offer.wantListing.id,
+        });
+      }
     }
-  };
 
-  const handleCancel = async (tradeId: string) => {
-    try {
-      await cancelTrade.mutateAsync(tradeId);
-      setSelectedTrade(null);
-    } catch (error: any) {
-      console.error('Failed to cancel trade:', error);
-      alert(error.message || 'Failed to cancel trade');
+    // Sort by date descending
+    entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return entries;
+  }, [user, listings, counterOffers]);
+
+  const filteredTrades = useMemo(() => {
+    if (filter === 'all') return trades;
+    if (filter === 'completed') {
+      return trades.filter(
+        (t) => t.status === 'completed' || t.status === 'accepted'
+      );
     }
-  };
-
-  const isReceived = (trade: Trade) => trade.receiver.id === user?.id;
-  const isSent = (trade: Trade) => trade.initiator.id === user?.id;
+    // pending
+    return trades.filter(
+      (t) => t.status === 'open' || t.status === 'pending'
+    );
+  }, [trades, filter]);
 
   if (isLoading) {
     return (
@@ -89,297 +225,180 @@ export default function Trades() {
     );
   }
 
-  const tradeList = trades ?? [];
-
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Trade History</h1>
       </div>
 
-      {/* Tabs */}
+      {/* Filter Tabs */}
       <div className="flex gap-2 flex-wrap">
-        {(['all', 'pending', 'accepted', 'rejected', 'expired'] as TradeStatus[]).map((status) => (
+        {(['all', 'completed', 'pending'] as FilterTab[]).map((tab) => (
           <button
-            key={status}
-            onClick={() => setStatusFilter(status)}
-            className={`btn ${statusFilter === status ? 'btn-primary' : 'btn-secondary'}`}
+            key={tab}
+            onClick={() => setFilter(tab)}
+            className={`btn ${filter === tab ? 'btn-primary' : 'btn-secondary'}`}
           >
-            {status.charAt(0).toUpperCase() + status.slice(1)}
+            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {tab !== 'all' && (
+              <span className="ml-1.5 text-xs opacity-70">
+                (
+                {tab === 'completed'
+                  ? trades.filter(
+                      (t) => t.status === 'completed' || t.status === 'accepted'
+                    ).length
+                  : trades.filter(
+                      (t) => t.status === 'open' || t.status === 'pending'
+                    ).length}
+                )
+              </span>
+            )}
           </button>
         ))}
       </div>
 
       {/* Trade List */}
-      {tradeList.length > 0 ? (
+      {filteredTrades.length > 0 ? (
         <div className="space-y-4">
-          {tradeList.map((trade: Trade) => {
-            const received = isReceived(trade);
-            const otherUser = received ? trade.initiator : trade.receiver;
-            const myPokemon = received ? trade.receiverPokemon : trade.initiatorPokemon;
-            const theirPokemon = received ? trade.initiatorPokemon : trade.receiverPokemon;
-
-            return (
-              <div
-                key={trade.id}
-                onClick={() => setSelectedTrade(trade)}
-                className="card cursor-pointer hover:ring-2 hover:ring-pokemon-electric transition-all"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
-                      {otherUser.displayName[0].toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-bold">{otherUser.displayName}</p>
-                      <p className="text-sm text-gray-400">
-                        {received ? 'Wants to trade with you' : 'Trade offer sent'}
-                      </p>
-                    </div>
+          {filteredTrades.map((trade) => (
+            <Link
+              key={trade.id}
+              to={`/want-listings/${trade.listingId}`}
+              className="card block hover:ring-2 hover:ring-pokemon-electric transition-all"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center text-sm font-bold">
+                    {trade.otherTrader.avatarUrl ? (
+                      <img
+                        src={trade.otherTrader.avatarUrl}
+                        alt={trade.otherTrader.displayName}
+                        className="w-10 h-10 rounded-full"
+                      />
+                    ) : (
+                      trade.otherTrader.displayName[0]?.toUpperCase() ?? '?'
+                    )}
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-sm ${STATUS_COLORS[trade.status]}`}>
-                    {trade.status}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  {/* Their Pokemon */}
-                  <div className="flex-1">
-                    <p className="text-xs text-gray-400 mb-2">They offer:</p>
-                    <div className="flex gap-2">
-                      {theirPokemon.slice(0, 3).map((p, idx) => (
-                        <div
-                          key={idx}
-                          className="w-12 h-12 bg-gray-700 rounded flex items-center justify-center"
-                        >
-                          {p.species.spriteUrl ? (
-                            <img
-                              src={p.species.spriteUrl}
-                              alt={p.species.name}
-                              className="w-10 h-10 pixelated"
-                              loading="lazy"
-                              decoding="async"
-                            />
-                          ) : (
-                            <span>?</span>
-                          )}
-                        </div>
-                      ))}
-                      {theirPokemon.length > 3 && (
-                        <span className="text-gray-400 text-sm">+{theirPokemon.length - 3}</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="text-2xl">⇄</div>
-
-                  {/* My Pokemon */}
-                  <div className="flex-1">
-                    <p className="text-xs text-gray-400 mb-2">For your:</p>
-                    <div className="flex gap-2">
-                      {myPokemon.slice(0, 3).map((p, idx) => (
-                        <div
-                          key={idx}
-                          className="w-12 h-12 bg-gray-700 rounded flex items-center justify-center"
-                        >
-                          {p.species.spriteUrl ? (
-                            <img
-                              src={p.species.spriteUrl}
-                              alt={p.species.name}
-                              className="w-10 h-10 pixelated"
-                              loading="lazy"
-                              decoding="async"
-                            />
-                          ) : (
-                            <span>?</span>
-                          )}
-                        </div>
-                      ))}
-                      {myPokemon.length > 3 && (
-                        <span className="text-gray-400 text-sm">+{myPokemon.length - 3}</span>
-                      )}
-                    </div>
+                  <div>
+                    <p className="font-bold">{trade.otherTrader.displayName}</p>
+                    <p className="text-sm text-gray-400">
+                      {trade.type === 'listing'
+                        ? 'Your listing'
+                        : 'Your counter-offer'}
+                    </p>
                   </div>
                 </div>
-
-                {trade.coinsOffered > 0 && (
-                  <p className="text-sm text-pokemon-electric mt-3">
-                    +{trade.coinsOffered} 🪙 included
-                  </p>
-                )}
+                <span
+                  className={`px-3 py-1 rounded-full text-sm ${STATUS_COLORS[trade.status] ?? 'bg-gray-500/20 text-gray-400'}`}
+                >
+                  {trade.displayStatus}
+                </span>
               </div>
-            );
-          })}
+
+              <div className="flex items-center gap-4">
+                {/* You gave */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-gray-400 mb-2">You gave:</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {trade.youGave.slice(0, 4).map((p, idx) => (
+                      <div
+                        key={idx}
+                        className="w-12 h-12 bg-gray-700 rounded flex items-center justify-center relative"
+                        title={p.name}
+                      >
+                        <img
+                          src={p.spriteUrl}
+                          alt={p.name}
+                          className="w-10 h-10 pixelated"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                        {p.isShiny && (
+                          <span className="absolute -top-1 -right-1 text-xs">✨</span>
+                        )}
+                      </div>
+                    ))}
+                    {trade.youGave.length > 4 && (
+                      <span className="text-gray-400 text-sm self-center">
+                        +{trade.youGave.length - 4}
+                      </span>
+                    )}
+                    {trade.youGave.length === 0 && (
+                      <span className="text-gray-500 text-sm">-</span>
+                    )}
+                  </div>
+                  {trade.coinsGave > 0 && (
+                    <p className="text-sm text-pokemon-electric mt-1">
+                      +{trade.coinsGave} coins
+                    </p>
+                  )}
+                </div>
+
+                <div className="text-2xl shrink-0">⇄</div>
+
+                {/* You received */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-gray-400 mb-2">You received:</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {trade.youReceived.slice(0, 4).map((p, idx) => (
+                      <div
+                        key={idx}
+                        className="w-12 h-12 bg-gray-700 rounded flex items-center justify-center relative"
+                        title={p.name}
+                      >
+                        <img
+                          src={p.spriteUrl}
+                          alt={p.name}
+                          className="w-10 h-10 pixelated"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                        {p.isShiny && (
+                          <span className="absolute -top-1 -right-1 text-xs">✨</span>
+                        )}
+                      </div>
+                    ))}
+                    {trade.youReceived.length > 4 && (
+                      <span className="text-gray-400 text-sm self-center">
+                        +{trade.youReceived.length - 4}
+                      </span>
+                    )}
+                    {trade.youReceived.length === 0 && (
+                      <span className="text-gray-500 text-sm">-</span>
+                    )}
+                  </div>
+                  {trade.coinsReceived > 0 && (
+                    <p className="text-sm text-pokemon-electric mt-1">
+                      +{trade.coinsReceived} coins
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-500 mt-3">
+                {new Date(trade.date).toLocaleDateString(undefined, {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              </p>
+            </Link>
+          ))}
         </div>
       ) : (
         <div className="card text-center py-16">
           <div className="text-6xl mb-4">🔄</div>
           <h2 className="text-2xl font-bold mb-2">No Trades Yet</h2>
           <p className="text-gray-400 mb-4">
-            {statusFilter !== 'all'
-              ? `No ${statusFilter} trades found.`
-              : 'Start a trade with another trainer!'}
+            {filter !== 'all'
+              ? `No ${filter} trades found.`
+              : 'Create a want listing or make a counter-offer to start trading!'}
           </p>
+          <Link to="/want-listings" className="btn btn-primary inline-block">
+            Browse Want Listings
+          </Link>
         </div>
       )}
-
-      {/* Trade Detail Modal */}
-      {selectedTrade && (
-        <div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-          onClick={() => setSelectedTrade(null)}
-        >
-          <div
-            className="card max-w-lg w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-start mb-4">
-              <h2 className="text-xl font-bold">Trade Details</h2>
-              <button
-                onClick={() => setSelectedTrade(null)}
-                className="text-gray-400 hover:text-white"
-              >
-                X
-              </button>
-            </div>
-
-            <div className={`px-3 py-1 rounded-full text-sm inline-block mb-4 ${STATUS_COLORS[selectedTrade.status]}`}>
-              {selectedTrade.status}
-            </div>
-
-            {/* Trade parties */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-2 bg-gray-600 rounded-full flex items-center justify-center text-xl">
-                  {selectedTrade.initiator.displayName[0].toUpperCase()}
-                </div>
-                <p className="font-bold">{selectedTrade.initiator.displayName}</p>
-                <p className="text-xs text-gray-400">
-                  {isSent(selectedTrade) ? '(You)' : 'Offers'}
-                </p>
-              </div>
-
-              <div className="text-3xl">⇄</div>
-
-              <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-2 bg-gray-600 rounded-full flex items-center justify-center text-xl">
-                  {selectedTrade.receiver.displayName[0].toUpperCase()}
-                </div>
-                <p className="font-bold">{selectedTrade.receiver.displayName}</p>
-                <p className="text-xs text-gray-400">
-                  {isReceived(selectedTrade) ? '(You)' : 'Receives'}
-                </p>
-              </div>
-            </div>
-
-            {/* Pokemon offered */}
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <p className="text-sm text-gray-400 mb-2">
-                  {selectedTrade.initiator.displayName} offers:
-                </p>
-                <div className="space-y-2">
-                  {selectedTrade.initiatorPokemon.map((p, idx) => (
-                    <div key={idx} className="flex items-center gap-2 bg-gray-700 rounded p-2">
-                      {p.species.spriteUrl ? (
-                        <img
-                          src={p.species.spriteUrl}
-                          alt={p.species.name}
-                          className="w-10 h-10 pixelated"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      ) : (
-                        <span className="w-10 h-10 flex items-center justify-center">?</span>
-                      )}
-                      <span className="capitalize text-sm">
-                        {p.species.name}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <p className="text-sm text-gray-400 mb-2">
-                  {selectedTrade.receiver.displayName} offers:
-                </p>
-                <div className="space-y-2">
-                  {selectedTrade.receiverPokemon.map((p, idx) => (
-                    <div key={idx} className="flex items-center gap-2 bg-gray-700 rounded p-2">
-                      {p.species.spriteUrl ? (
-                        <img
-                          src={p.species.spriteUrl}
-                          alt={p.species.name}
-                          className="w-10 h-10 pixelated"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      ) : (
-                        <span className="w-10 h-10 flex items-center justify-center">?</span>
-                      )}
-                      <span className="capitalize text-sm">
-                        {p.species.name}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {selectedTrade.coinsOffered > 0 && (
-              <div className="bg-gray-700 rounded p-3 mb-4 text-center">
-                <p className="text-pokemon-electric">
-                  +{selectedTrade.coinsOffered} 🪙 from {selectedTrade.initiator.displayName}
-                </p>
-              </div>
-            )}
-
-            <div className="text-sm text-gray-400 mb-4">
-              <p>Created: {new Date(selectedTrade.createdAt).toLocaleString()}</p>
-              {selectedTrade.status === 'pending' && (
-                <p>Expires: {new Date(selectedTrade.expiresAt).toLocaleString()}</p>
-              )}
-            </div>
-
-            {/* Actions */}
-            {selectedTrade.status === 'pending' && isReceived(selectedTrade) && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleAccept(selectedTrade.id)}
-                  disabled={acceptTrade.isPending || rejectTrade.isPending}
-                  className="btn btn-primary flex-1"
-                >
-                  {acceptTrade.isPending ? '...' : 'Accept'}
-                </button>
-                <button
-                  onClick={() => handleReject(selectedTrade.id)}
-                  disabled={acceptTrade.isPending || rejectTrade.isPending}
-                  className="btn btn-secondary flex-1"
-                >
-                  {rejectTrade.isPending ? '...' : 'Reject'}
-                </button>
-              </div>
-            )}
-
-            {selectedTrade.status === 'pending' && isSent(selectedTrade) && (
-              <div className="space-y-3">
-                <p className="text-center text-gray-400">
-                  Waiting for {selectedTrade.receiver.displayName} to respond...
-                </p>
-                <button
-                  onClick={() => handleCancel(selectedTrade.id)}
-                  disabled={cancelTrade.isPending}
-                  className="btn btn-secondary w-full"
-                >
-                  {cancelTrade.isPending ? 'Cancelling...' : 'Cancel Trade'}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }
