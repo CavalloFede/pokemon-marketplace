@@ -49,14 +49,14 @@ export default function Shop() {
   const eggItems = shopItems?.filter((item: any) => item.itemType === 'egg') ?? [];
   const pokemonItems = shopItems?.filter((item: any) => item.itemType === 'pokemon') ?? [];
 
-  const [minutesUntilRefresh, setMinutesUntilRefresh] = useState(() => {
-    return 60 - new Date().getMinutes();
+  const [hoursUntilRefresh, setHoursUntilRefresh] = useState(() => {
+    return 24 - new Date().getUTCHours();
   });
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setMinutesUntilRefresh(60 - new Date().getMinutes());
-    }, 30000); // update every 30s
+      setHoursUntilRefresh(24 - new Date().getUTCHours());
+    }, 60000); // update every minute
     return () => clearInterval(interval);
   }, []);
 
@@ -154,7 +154,7 @@ export default function Shop() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold">Featured Pokemon</h2>
             <span className="text-sm text-gray-400">
-              Refreshes in {minutesUntilRefresh}m
+              Refreshes in {hoursUntilRefresh}h
             </span>
           </div>
           <p className="text-gray-400 mb-4">
